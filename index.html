@@ -118,6 +118,8 @@
   .ans.sel{border-style:solid;border-color:var(--sun);background:#FFF8E4;box-shadow:0 0 0 4px #FFE9AE}
   .ans.ok{border-style:solid;border-color:var(--carry);background:var(--carry-soft)}
   .ans.bad{border-style:solid;border-color:var(--wrong);background:var(--wrong-soft);animation:shake .3s}
+  .ans.locked{opacity:.35;cursor:not-allowed}
+  .ans.shakeit{animation:shake .3s}
   @keyframes shake{25%{transform:translateX(-6px)}75%{transform:translateX(6px)}}
 
   /* ten-frame concretiser */
@@ -323,6 +325,7 @@ th:{
   concreteTensSub:(a,b,r)=>`นับแท่งฟ้า ${a} แท่ง แล้วตัด ${b} แท่งที่จางออก เหลือ ${r}`,
   stepLabel:(i,n)=>`ขั้นที่ ${i}/${n}`, stepStart:`แตะ "ต่อไป ▶" เพื่อเริ่ม`,
   tryStartSay:`แตะช่องคำตอบ (เส้นประ) แล้วกดตัวเลข  ทำหลักหน่วยก่อนนะ!`,
+  lockedHint:`ทำหลักหน่วยให้เสร็จก่อนนะ ถึงจะไปหลักสิบได้!`,
   watchStartSay:`กดปุ่ม <b>ต่อไป ▶</b> เพื่อดูทีละขั้นนะ`,
   okMsg:(a,op,b,ans)=>`<b>เก่งมาก!</b> ${a} ${op} ${b} = <b>${ans}</b> ถูกต้องเลย! 🎉`,
   hintCarry:(sum)=>`ช่องหน่วยบวกกันได้ <b>${sum}</b> ซึ่งเกิน 10 นะ  ต้อง <b>ทด 1</b> ขึ้นไปหลักสิบ ลองกดปุ่ม <b>ช่วยหน่อย</b> ดูวิธีได้เลย`,
@@ -371,6 +374,7 @@ en:{
   concreteTensSub:(a,b,r)=>`Count ${a} bars, fade out ${b}, leaving ${r}`,
   stepLabel:(i,n)=>`Step ${i} of ${n}`, stepStart:`Tap "Next ▶" to start`,
   tryStartSay:`Tap a dotted box and press numbers. Do the ones first!`,
+  lockedHint:`Finish the ones place first before moving to tens!`,
   watchStartSay:`Press <b>Next ▶</b> to go step by step.`,
   okMsg:(a,op,b,ans)=>`<b>Great job!</b> ${a} ${op} ${b} = <b>${ans}</b> — that's right! 🎉`,
   hintCarry:(sum)=>`The ones add up to <b>${sum}</b>, more than 10. You need to <b>carry 1</b> up to the tens. Tap <b>Help me</b> to see how.`,
@@ -483,6 +487,7 @@ function renderSum(mode){
   if(mode==='try'){
     document.querySelectorAll('#sum .ans').forEach(el=>{
       el.onclick=()=>selectCell(el);
+      if(el.dataset.slot!=='ones') el.classList.add('locked');
     });
     // default select ones
     const io=$('in-ones'); if(io) selectCell(io);
@@ -535,6 +540,11 @@ function renderConcrete(){
 /* ================= TRY mode ================= */
 let cellVals={};
 function selectCell(el){
+  if(el.classList.contains('locked')){
+    setSay(S().lockedHint);
+    el.classList.remove('shakeit'); void el.offsetWidth; el.classList.add('shakeit');
+    return;
+  }
   document.querySelectorAll('#sum .ans').forEach(x=>x.classList.remove('sel'));
   el.classList.add('sel'); state.sel=el.dataset.slot;
 }
@@ -545,7 +555,14 @@ function padPress(v){
   el.classList.remove('ok','bad');
   if(v==='del'){ cellVals[state.sel]=''; el.textContent=''; return; }
   cellVals[state.sel]=v; el.textContent=v;
-  // auto-advance selection ones -> carry -> tens for nicer flow
+  // auto-advance selection ones -> carry -> tens for nicer flow, unlocking as we go
+  if(state.sel==='ones'){
+    const next=document.querySelector('#sum .ans[data-slot="carry"]')||document.querySelector('#sum .ans[data-slot="tens"]');
+    if(next){ next.classList.remove('locked'); selectCell(next); }
+  } else if(state.sel==='carry'){
+    const tensEl=document.querySelector('#sum .ans[data-slot="tens"]');
+    if(tensEl){ tensEl.classList.remove('locked'); selectCell(tensEl); }
+  }
 }
 function checkAnswer(){
   const ans=answer();
