@@ -593,7 +593,7 @@ function checkAnswer(){
     setSay(S().okMsg(state.a,LESSONS[state.key].op,state.b,ans));
     celebrate(); $('btnCheck').disabled=true;
     clearTimeout(autoNextTimer);
-    autoNextTimer=setTimeout(()=>{ if(state.mode==='try') newRound(); }, 5000);
+    autoNextTimer=setTimeout(()=>{ if(state.mode==='try') newRound(); }, 3000);
   } else {
     // targeted hint
     if(isAdd && carryVal() && (parseInt(cellVals.carry||'-1'))!==1){
@@ -604,7 +604,7 @@ function checkAnswer(){
       setSay(S().hintGeneric);
     }
     clearTimeout(autoClearTimer);
-    autoClearTimer=setTimeout(()=>{ if(state.mode==='try') resetAnswerForm(); }, 3000);
+    autoClearTimer=setTimeout(()=>{ if(state.mode==='try') resetAnswerForm(); }, 2000);
   }
 }
 
@@ -791,19 +791,15 @@ function renderControls(){
   if(state.mode==='try'){
     $('controls').innerHTML=`
       <button class="btn sun" id="btnHelp">${s.helpBtn}</button>
-      <button class="btn go" id="btnCheck">${s.checkBtn}</button>
-      <button class="btn ghost" id="btnNew">🔄</button>`;
+      <button class="btn go" id="btnCheck">${s.checkBtn}</button>`;
     $('btnHelp').onclick=()=>setMode('watch');
     $('btnCheck').onclick=checkAnswer;
-    $('btnNew').onclick=newRound;
   } else {
     $('controls').innerHTML=`
       <button class="btn primary" id="btnNext">${s.nextBtn}</button>
-      <button class="btn ghost" id="btnBackTry" title="${s.tryTitleAttr}">✏️</button>
-      <button class="btn ghost" id="btnNew2">🔄</button>`;
+      <button class="btn ghost" id="btnBackTry" title="${s.tryTitleAttr}">✏️</button>`;
     $('btnNext').onclick=nextStep;
     $('btnBackTry').onclick=()=>setMode('try');
-    $('btnNew2').onclick=newRound;
   }
 }
 function setMode(m){
