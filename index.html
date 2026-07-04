@@ -346,6 +346,7 @@ th:{
   concreteTensSub:(a,b,r)=>`นับแท่งฟ้า ${a} แท่ง แล้วตัด ${b} แท่งที่จางออก เหลือ ${r}`,
   stepLabel:(i,n)=>`ขั้นที่ ${i}/${n}`, stepStart:`แตะ "ต่อไป ▶" เพื่อเริ่ม`,
   tryStartSay:`แตะช่องคำตอบ (เส้นประ) แล้วกดตัวเลข  ทำหลักหน่วยก่อนนะ!`,
+  tryStartSayBorrow:`หลักหน่วยไม่พอ! ลองคิดว่ายืมจากหลักสิบมาแล้วหลักสิบเหลือเท่าไหร่ ใส่ในช่อง ? ก่อนนะ`,
   lockedHint:`ทำหลักหน่วยให้เสร็จก่อนนะ ถึงจะไปหลักสิบได้!`,
   watchStartSay:`กดปุ่ม <b>ต่อไป ▶</b> เพื่อดูทีละขั้นนะ`,
   okMsg:(a,op,b,ans)=>`<b>เก่งมาก!</b> ${a} ${op} ${b} = <b>${ans}</b> ถูกต้องเลย! 🎉`,
@@ -398,6 +399,7 @@ en:{
   concreteTensSub:(a,b,r)=>`Count ${a} bars, fade out ${b}, leaving ${r}`,
   stepLabel:(i,n)=>`Step ${i} of ${n}`, stepStart:`Tap "Next ▶" to start`,
   tryStartSay:`Tap a dotted box and press numbers. Do the ones first!`,
+  tryStartSayBorrow:`Not enough ones! Work out how many tens are left after borrowing, and fill in the ? box first.`,
   lockedHint:`Finish the ones place first before moving to tens!`,
   watchStartSay:`Press <b>Next ▶</b> to go step by step.`,
   okMsg:(a,op,b,ans)=>`<b>Great job!</b> ${a} ${op} ${b} = <b>${ans}</b> — that's right! 🎉`,
@@ -472,6 +474,8 @@ function renderSum(mode){
     } else {
       carryCell = `<span class="carrymark" id="cm-tens">1</span>`;
     }
+  } else if(A>=10 && mode==='try' && borrowNeeded()){
+    carryCell = `<div class="ans carry" data-slot="borrowTens" id="in-borrowTens">?</div>`;
   } else if(A>=10){
     carryCell = `<span class="carrymark" id="cm-tens-sub"></span>`;
   }
@@ -514,12 +518,12 @@ function renderSum(mode){
   $('sum').innerHTML = carryRow + rowA + rowB + `<div class="rule"></div>` + rowAns;
 
   if(mode==='try'){
+    const firstSlot = document.querySelector('#sum .ans[data-slot="borrowTens"]') ? 'borrowTens' : 'ones';
     document.querySelectorAll('#sum .ans').forEach(el=>{
       el.onclick=()=>selectCell(el);
-      if(el.dataset.slot!=='ones') el.classList.add('locked');
+      if(el.dataset.slot!==firstSlot) el.classList.add('locked');
     });
-    // default select ones
-    const io=$('in-ones'); if(io) selectCell(io);
+    const first=document.querySelector(`#sum .ans[data-slot="${firstSlot}"]`); if(first) selectCell(first);
   }
 }
 
@@ -577,7 +581,8 @@ let autoClearTimer=null;
 function resetAnswerForm(){
   cellVals={};
   renderSum('try');
-  setSay(S().tryStartSay);
+  const hasBorrowBox = !!document.querySelector('#sum .ans[data-slot="borrowTens"]');
+  setSay(hasBorrowBox ? S().tryStartSayBorrow : S().tryStartSay);
 }
 function isLastSlot(slot){
   return document.querySelector('#sum .ans[data-slot="tens"]') ? slot==='tens' : slot==='ones';
@@ -599,6 +604,19 @@ function padPress(v){
   if(v==='del'){ cellVals[state.sel]=''; el.textContent=''; return; }
   const filledSlot=state.sel;
   cellVals[state.sel]=v; el.textContent=v;
+  if(filledSlot==='borrowTens'){
+    if(parseInt(v)===tens(state.a)-1){
+      el.classList.add('ok');
+      showOnesBorrowMark();
+      const strk=$('strk-tens'); if(strk) strk.classList.add('show');
+      const onesEl=document.querySelector('#sum .ans[data-slot="ones"]');
+      if(onesEl){ onesEl.classList.remove('locked'); selectCell(onesEl); }
+    } else {
+      el.classList.add('bad');
+      setTimeout(()=>{ cellVals.borrowTens=''; el.textContent='?'; el.classList.remove('bad'); }, 900);
+    }
+    return;
+  }
   // auto-advance selection ones -> carry -> tens for nicer flow, unlocking as we go
   if(state.sel==='ones'){
     const next=document.querySelector('#sum .ans[data-slot="carry"]')||document.querySelector('#sum .ans[data-slot="tens"]');
@@ -858,7 +876,9 @@ function renderRound(){
   clearTimeout(autoClearTimer);
   cellVals={};
   if(state.mode==='try'){ renderSum('try'); renderConcrete();
-    setSay(S().tryStartSay); const bc=$('btnCheck'); if(bc) bc.disabled=false; }
+    const hasBorrowBox = !!document.querySelector('#sum .ans[data-slot="borrowTens"]');
+    setSay(hasBorrowBox ? S().tryStartSayBorrow : S().tryStartSay);
+    const bc=$('btnCheck'); if(bc) bc.disabled=false; }
   else { renderSum('watch'); renderConcrete(); state.watchSteps=buildSteps(); state.watchIdx=0;
     clearFocus(); renderStepbar(0,state.watchSteps.length);
     setSay(S().watchStartSay); updateWatchBtn(); }
