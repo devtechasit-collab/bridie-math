@@ -1,0 +1,856 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<title>น้องทองพาบวกลบ — เรียนการทดแบบเห็นภาพ</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Baloo+Thai+2:wght@500;600;700;800&family=Itim&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#FFFDF6;
+    --card:#FFFFFF;
+    --ink:#22303C;
+    --ink-soft:#6A7783;
+    --ones:#FF8A3D;      --ones-soft:#FFE7D2;    --ones-b:#FFC98A;
+    --tens:#3B7DD8;      --tens-soft:#DCE9FB;    --tens-b:#8FB8E8;
+    --carry:#12B981;     --carry-soft:#D2F4E6;
+    --sun:#FFC531;
+    --line:#EDE6D6;
+    --wrong:#EF476F;     --wrong-soft:#FCDCE5;
+    --shadow:0 6px 0 rgba(34,48,60,.12), 0 12px 24px rgba(34,48,60,.10);
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;height:100%}
+  body{
+    font-family:'Itim',sans-serif;
+    background:
+      radial-gradient(1200px 500px at 50% -10%, #FFF3D6 0%, rgba(255,243,214,0) 60%),
+      var(--paper);
+    color:var(--ink);
+    -webkit-font-smoothing:antialiased;
+    overflow-x:hidden;
+  }
+  .num{font-family:'Baloo Thai 2',sans-serif;font-weight:800;font-variant-numeric:tabular-nums}
+  .app{max-width:560px;margin:0 auto;min-height:100%;display:flex;flex-direction:column;padding:14px 16px 28px}
+
+  /* ---------- Top bar ---------- */
+  .topbar{display:flex;align-items:center;gap:10px;margin-bottom:10px;min-height:44px}
+  .back{border:none;background:var(--card);box-shadow:var(--shadow);width:44px;height:44px;border-radius:16px;
+    font-size:22px;cursor:pointer;display:none;place-items:center;line-height:1}
+  .back.show{display:grid}
+  .brand{display:flex;align-items:center;gap:9px;font-family:'Baloo Thai 2';font-weight:800;font-size:20px}
+  .brand .bird{font-size:24px;filter:drop-shadow(0 3px 0 rgba(0,0,0,.08))}
+  .spacer{flex:1}
+  .langtoggle{display:flex;gap:2px;background:#F1ECDE;padding:4px;border-radius:12px}
+  .langtoggle button{border:none;background:transparent;font-family:'Baloo Thai 2';font-weight:700;font-size:13px;
+    padding:6px 11px;border-radius:9px;cursor:pointer;color:var(--ink-soft)}
+  .langtoggle button.active{background:var(--card);color:var(--ink);box-shadow:0 1px 4px rgba(0,0,0,.12)}
+
+  /* ---------- Home ---------- */
+  #home .hero{
+    background:var(--card);border-radius:26px;box-shadow:var(--shadow);
+    padding:22px 20px 20px;text-align:center;margin-bottom:16px;position:relative;overflow:hidden}
+  #home .hero .bird{font-size:56px;line-height:1;margin-bottom:2px;display:inline-block;animation:bob 2.4s ease-in-out infinite}
+  @keyframes bob{50%{transform:translateY(-7px)}}
+  #home h1{font-family:'Baloo Thai 2';font-weight:800;font-size:26px;margin:6px 0 4px}
+  #home .sub{color:var(--ink-soft);font-size:15px;margin:0}
+  .section-label{font-family:'Baloo Thai 2';font-weight:700;font-size:15px;color:var(--ink-soft);
+    margin:6px 4px 10px;display:flex;align-items:center;gap:8px}
+  .section-label::before{content:"";width:8px;height:8px;border-radius:3px;background:var(--sun)}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:18px}
+  .lesson{
+    background:var(--card);border:none;text-align:left;cursor:pointer;
+    border-radius:22px;box-shadow:var(--shadow);padding:16px 15px;
+    display:flex;flex-direction:column;gap:8px;transition:transform .12s ease;color:var(--ink);
+    border-bottom:5px solid rgba(0,0,0,.06)}
+  .lesson:active{transform:translateY(3px);box-shadow:0 3px 0 rgba(34,48,60,.12),0 8px 16px rgba(34,48,60,.10)}
+  .lesson .icon{width:46px;height:46px;border-radius:15px;display:grid;place-items:center;
+    font-family:'Baloo Thai 2';font-weight:800;font-size:26px;line-height:1}
+  .lesson.add .icon{background:var(--ones-soft);color:var(--ones)}
+  .lesson.sub .icon{background:var(--tens-soft);color:var(--tens)}
+  .lesson .t{font-family:'Baloo Thai 2';font-weight:700;font-size:16px}
+  .lesson .d{font-size:13px;color:var(--ink-soft);line-height:1.25}
+  .lesson .tag{align-self:flex-start;font-size:12px;padding:3px 10px;border-radius:999px;font-family:'Baloo Thai 2';font-weight:700}
+  .tag.easy{background:var(--carry-soft);color:#0d8f63}
+  .tag.hard{background:#FFE9C2;color:#C77D14}
+
+  /* ---------- Board screen ---------- */
+  #board{display:none;flex-direction:column;flex:1}
+  #board.show{display:flex}
+  .lesson-title{font-family:'Baloo Thai 2';font-weight:800;font-size:20px;text-align:center;margin:2px 0 12px}
+
+  .modeswitch{display:flex;gap:8px;background:#F1ECDE;padding:5px;border-radius:16px;margin:0 auto 14px;width:max-content}
+  .modeswitch button{border:none;background:transparent;font-family:'Baloo Thai 2';font-weight:700;font-size:14px;
+    padding:8px 16px;border-radius:12px;cursor:pointer;color:var(--ink-soft)}
+  .modeswitch button.active{background:var(--card);color:var(--ink);box-shadow:0 2px 6px rgba(0,0,0,.08)}
+
+  .stage{background:var(--card);border-radius:24px;box-shadow:var(--shadow);padding:18px 16px 16px;margin-bottom:14px}
+
+  /* vertical sum */
+  .sum{display:grid;justify-content:center;gap:2px;margin:4px auto 2px}
+  .sum .row{display:grid;grid-template-columns:40px 62px 62px;align-items:center}
+  .sum .cell{height:64px;display:grid;place-items:center;position:relative}
+  .sum .op{font-family:'Baloo Thai 2';font-weight:800;font-size:34px;color:var(--ink-soft);justify-self:end;padding-right:4px}
+  .digit{font-family:'Baloo Thai 2';font-weight:800;font-size:46px;line-height:1}
+  .digit.ones{color:var(--ones)}
+  .digit.tens{color:var(--tens)}
+  .sum .rule{grid-column:1 / -1;height:5px;background:var(--ink);border-radius:99px;margin:2px 0 4px}
+  .carrymark{font-family:'Baloo Thai 2';font-weight:800;font-size:38px;color:var(--carry);line-height:1;
+    opacity:0;transform:scale(.4);transition:all .4s cubic-bezier(.2,1.4,.4,1)}
+  .carrymark.show{opacity:1;transform:scale(1)}
+  .borrowmark{position:absolute;top:-4px;font-family:'Baloo Thai 2';font-weight:800;font-size:18px;color:var(--tens);opacity:0;transition:opacity .3s}
+  .borrowmark.show{opacity:1}
+  .strike{position:absolute;left:8%;right:8%;top:52%;height:4px;background:var(--wrong);border-radius:9px;
+    transform:scaleX(0);transform-origin:left;transition:transform .35s ease}
+  .strike.show{transform:scaleX(1)}
+  .colglow{border-radius:14px;transition:background .3s}
+  .colglow.on-ones{background:var(--ones-soft)}
+  .colglow.on-tens{background:var(--tens-soft)}
+
+  /* answer input cells */
+  .ans{font-family:'Baloo Thai 2';font-weight:800;font-size:44px;width:56px;height:60px;border-radius:14px;
+    display:grid;place-items:center;border:3px dashed var(--line);background:#FBFAF4;cursor:pointer;transition:all .15s}
+  .ans.ones{color:var(--ones)}
+  .ans.tens{color:var(--tens)}
+  .ans.carry{color:var(--carry);font-size:30px;width:40px;height:42px;border-color:var(--carry-soft)}
+  .ans.sel{border-style:solid;border-color:var(--sun);background:#FFF8E4;box-shadow:0 0 0 4px #FFE9AE}
+  .ans.ok{border-style:solid;border-color:var(--carry);background:var(--carry-soft)}
+  .ans.bad{border-style:solid;border-color:var(--wrong);background:var(--wrong-soft);animation:shake .3s}
+  @keyframes shake{25%{transform:translateX(-6px)}75%{transform:translateX(6px)}}
+
+  /* ten-frame concretiser */
+  .concrete{margin-top:8px;padding-top:12px;border-top:2px dashed var(--line)}
+  .concrete .clabel{font-size:13px;color:var(--ink-soft);text-align:center;margin-bottom:8px}
+  .frames{display:flex;justify-content:center;align-items:flex-end;gap:14px;min-height:96px;flex-wrap:wrap}
+  .tensStack{display:flex;gap:6px;align-items:flex-end}
+  .tenbar{width:22px;height:88px;border-radius:8px;background:var(--tens);position:relative;
+    box-shadow:inset 0 0 0 2px rgba(255,255,255,.35);display:flex;flex-direction:column;justify-content:space-between;padding:3px}
+  .tenbar::after{content:"10";position:absolute;bottom:3px;left:0;right:0;text-align:center;color:#fff;
+    font-family:'Baloo Thai 2';font-weight:800;font-size:11px}
+  .tenbar span{height:5px;background:rgba(255,255,255,.5);border-radius:2px}
+  .tenbar.pop{animation:popin .4s cubic-bezier(.2,1.5,.4,1)}
+  @keyframes popin{from{transform:scale(0) translateY(20px);opacity:0}}
+  .tenbar.fly{animation:flyup .7s ease forwards}
+  @keyframes flyup{to{transform:translate(-46px,-4px) scale(1);opacity:1}}
+  .frame10{position:relative;display:grid;grid-template-columns:repeat(5,1fr);grid-auto-rows:1fr;gap:5px;
+    padding:7px;background:#F3EFE3;border-radius:12px;width:150px}
+  .slot{aspect-ratio:1;border-radius:50%;background:#E4DDCB;transition:all .25s}
+  .slot.fill{background:var(--ones);box-shadow:0 2px 0 rgba(0,0,0,.12)}
+  .slot.fill.pulse{animation:pulse .5s ease}
+  @keyframes pulse{50%{transform:scale(1.25)}}
+  .frame10.bundle{animation:bundle .6s ease}
+  @keyframes bundle{40%{transform:scale(1.06);box-shadow:0 0 0 5px var(--carry-soft)}}
+  .frame10.gone{animation:shrinkgo .6s ease forwards}
+  @keyframes shrinkgo{to{transform:scale(.15) translate(-70px,-30px);opacity:0}}
+  .extras{display:flex;gap:5px;flex-wrap:wrap;max-width:120px}
+  .extras .slot{width:22px;height:22px;aspect-ratio:auto}
+  .slot.popdot{animation:popin .4s both}
+  .slot.fill.groupB{background:var(--ones-b)}
+  /* legend: colored count pills so kids match dot color -> number */
+  .grouplegend{display:none;justify-content:center;align-items:center;gap:8px;margin-top:10px}
+  .grouplegend .pill{font-family:'Baloo Thai 2';font-weight:800;font-size:17px;color:#fff;
+    padding:5px 15px;border-radius:999px;box-shadow:0 3px 0 rgba(0,0,0,.15);min-width:28px;text-align:center}
+  .grouplegend .pill.A{background:var(--ones)}
+  .grouplegend .pill.B{background:var(--ones-b);color:#7A4A12}
+  .grouplegend .plus{font-family:'Baloo Thai 2';font-weight:800;font-size:19px;color:var(--ink-soft)}
+  /* single ten-bar: the ONE consistent visual for "a ten", used both when bundling up and borrowing down */
+  .tenwrap{display:grid;place-items:center;min-width:70px;min-height:88px}
+  .tenbarv{width:38px;height:88px;border-radius:11px;background:linear-gradient(180deg,#5B9BE8,#2F6FC4);
+    box-shadow:inset 0 0 0 2px rgba(255,255,255,.35),0 5px 0 #1F4E8C;
+    display:grid;place-items:center;color:#fff;font-family:'Baloo Thai 2';font-weight:800;font-size:17px}
+  .tenbarv.pop{animation:popin .45s cubic-bezier(.2,1.5,.4,1)}
+  .tenbarv.drop{animation:chipdrop .55s ease}
+  @keyframes chipdrop{from{transform:translateY(-48px) scale(.65);opacity:0}}
+  .tenbarv.fadeup{animation:barfadeup .6s ease forwards}
+  @keyframes barfadeup{to{transform:translateY(-42px) scale(.55);opacity:0}}
+  .tenbarv.ascarry{background:linear-gradient(180deg,#3DD9A5,#0E9A6C);
+    box-shadow:inset 0 0 0 2px rgba(255,255,255,.35),0 5px 0 #0B7A55}
+  /* tens-place bars: same blue as the tens digits above, green if it's the carried one */
+  .tenbars{display:flex;justify-content:center;align-items:flex-end;gap:6px;flex-wrap:wrap;min-height:70px}
+  .tenbarmini{width:20px;height:60px;border-radius:7px;background:linear-gradient(180deg,#5B9BE8,#2F6FC4);
+    box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.35),0 3px 0 #1F4E8C}
+  .tenbarmini.carry{background:linear-gradient(180deg,#3DD9A5,#0E9A6C);
+    box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.35),0 3px 0 #0B7A55}
+  .tenbarmini.groupB{background:linear-gradient(180deg,#A9CDF0,var(--tens-b));
+    box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.35),0 3px 0 #5F8AC0}
+  .tenbarmini.pop{animation:popin .4s cubic-bezier(.2,1.5,.4,1) both}
+  .tenbarmini.removedbar{opacity:.28;filter:grayscale(.5)}
+  .grouplegend .pill.carry{background:var(--carry)}
+  .grouplegend .pill.tensA{background:var(--tens)}
+  .grouplegend .pill.tensB{background:var(--tens-b);color:#1F4E8C}
+  /* column focus highlight (watch mode) */
+  .sum .cell[data-col]{border-radius:12px;transition:background .25s,box-shadow .25s}
+  .cell.focuscol.f-ones{background:var(--ones-soft);box-shadow:inset 0 0 0 2.5px var(--ones)}
+  .cell.focuscol.f-tens{background:var(--tens-soft);box-shadow:inset 0 0 0 2.5px var(--tens)}
+  .focuscell{animation:cellpulse 1.1s ease-in-out infinite}
+  @keyframes cellpulse{50%{transform:scale(1.14)}}
+  /* step bar */
+  .stepbar{display:none;align-items:center;justify-content:center;gap:10px;margin:0 0 12px}
+  .stepnum{font-family:'Baloo Thai 2';font-weight:800;font-size:14px;color:var(--ink);
+    background:var(--card);box-shadow:var(--shadow);padding:6px 14px;border-radius:999px}
+  .stepdots{display:inline-flex;gap:5px}
+  .stepdots i{width:9px;height:9px;border-radius:50%;background:var(--line);transition:background .3s}
+  .stepdots i.on{background:var(--carry)}
+  /* the '1' that lifts up from the two-digit sum */
+  .digit.ascarry{color:var(--carry)}
+  .flydigit{position:fixed;z-index:100;display:grid;place-items:center;font-family:'Baloo Thai 2';
+    font-weight:800;font-size:44px;color:var(--carry);pointer-events:none;
+    transition:transform .8s cubic-bezier(.3,.9,.25,1)}
+
+  /* narration + controls */
+  .say{background:var(--carry-soft);border-radius:18px;padding:12px 16px;margin:2px 0 12px;
+    font-size:16px;line-height:1.4;display:flex;gap:10px;align-items:flex-start;min-height:52px}
+  .say .bird{font-size:24px;line-height:1.2}
+  .say b{color:#0d8f63;font-family:'Baloo Thai 2';font-weight:800}
+  .say .h-ones{color:var(--ones);font-family:'Baloo Thai 2';font-weight:800}
+  .say .h-tens{color:var(--tens);font-family:'Baloo Thai 2';font-weight:800}
+
+  .controls{display:flex;gap:10px;margin-top:auto}
+  .btn{flex:1;border:none;border-radius:18px;padding:15px;font-family:'Baloo Thai 2';font-weight:800;font-size:17px;
+    cursor:pointer;box-shadow:0 5px 0 rgba(0,0,0,.14);transition:transform .1s;color:#fff}
+  .btn:active{transform:translateY(3px);box-shadow:0 2px 0 rgba(0,0,0,.14)}
+  .btn.primary{background:var(--tens)}
+  .btn.go{background:var(--carry)}
+  .btn.sun{background:var(--sun);color:#7A5300}
+  .btn.ghost{background:var(--card);color:var(--ink);box-shadow:var(--shadow);flex:0 0 auto;width:56px;font-size:20px}
+  .btn[disabled]{opacity:.4;pointer-events:none}
+
+  /* number pad */
+  .pad{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-bottom:12px}
+  .pad button{border:none;background:var(--card);box-shadow:var(--shadow);border-radius:14px;height:52px;
+    font-family:'Baloo Thai 2';font-weight:800;font-size:22px;cursor:pointer;color:var(--ink);
+    border-bottom:4px solid rgba(0,0,0,.07)}
+  .pad button:active{transform:translateY(2px)}
+  .pad .del{color:var(--wrong);font-size:18px}
+  .hidden{display:none!important}
+
+  /* celebration */
+  .stars{position:fixed;inset:0;pointer-events:none;z-index:50}
+  .star{position:absolute;font-size:26px;animation:fall 1.1s ease-in forwards}
+  @keyframes fall{to{transform:translateY(105vh) rotate(320deg);opacity:0}}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="topbar">
+    <button class="back" id="back" aria-label="กลับ">←</button>
+    <div class="brand"><span class="bird">🐦</span><span id="brandName">น้องทองพาบวกลบ</span></div>
+    <div class="spacer"></div>
+    <div class="langtoggle" id="langtoggle"><button data-l="th">ไทย</button><button data-l="en">EN</button></div>
+  </div>
+
+  <!-- HOME -->
+  <div id="home">
+    <div class="hero">
+      <div class="bird">🐤</div>
+      <h1 id="heroH1"></h1>
+      <p class="sub" id="heroSub"></p>
+    </div>
+    <div class="section-label" id="sectionLabel"></div>
+    <div class="grid" id="lessonGrid"></div>
+  </div>
+
+  <!-- BOARD -->
+  <div id="board">
+    <div class="lesson-title" id="boardTitle"></div>
+    <div class="modeswitch">
+      <button id="mWatch"></button>
+      <button id="mTry" class="active"></button>
+    </div>
+
+    <div class="stepbar" id="stepbar">
+      <span class="stepnum" id="stepNum"></span>
+      <span class="stepdots" id="stepDots"></span>
+    </div>
+
+    <div class="stage">
+      <div class="sum" id="sum"></div>
+      <div class="concrete">
+        <div class="clabel" id="concreteLabel"></div>
+        <div class="frames" id="frames"></div>
+        <div class="grouplegend" id="grouplegend"></div>
+      </div>
+    </div>
+
+    <div class="say" id="say"><span class="bird">🐤</span><span id="sayText"></span></div>
+
+    <!-- try mode pad -->
+    <div class="pad" id="pad"></div>
+
+    <div class="controls" id="controls"></div>
+  </div>
+</div>
+
+<div class="stars" id="stars"></div>
+
+<script>
+/* ================= data ================= */
+const LESSONS = {
+  add1:  {op:'+', icon:'＋', cls:'add', tag:'easy'},
+  add2n: {op:'+', icon:'＋', cls:'add', tag:'easy'},
+  add2c: {op:'+', icon:'＋', cls:'add', tag:'hard'},
+  sub1:  {op:'−', icon:'－', cls:'sub', tag:'easy'},
+  sub2n: {op:'−', icon:'－', cls:'sub', tag:'easy'},
+  sub2b: {op:'−', icon:'－', cls:'sub', tag:'hard'},
+};
+
+let state = { key:null, mode:'try', lang:'th', a:0, b:0, sel:null, watchSteps:[], watchIdx:0 };
+
+/* ================= language strings ================= */
+const T = {
+th:{
+  title:`น้องทองพาบวกลบ — เรียนการทดแบบเห็นภาพ`, brand:`น้องทองพาบวกลบ`,
+  heroH1:`มาเรียน "ทด" กันเถอะ!`, heroSub:`เห็นภาพชัดๆ ว่า 10 หน่วย มัดเป็น 1 สิบ ยังไง`,
+  sectionLabel:`เริ่มจากง่ายไปยาก`, watchBtn:`👀 ดูวิธีทำ`, tryBtn:`✏️ ฝึกทำเอง`,
+  tagHard:`ท้าทาย`, tagEasy:`ง่าย`, helpBtn:`💡 ช่วยหน่อย`, checkBtn:`ตรวจคำตอบ ✓`,
+  nextBtn:`ต่อไป ▶`, doneBtn:`จบแล้ว ✓ ทำข้อใหม่`, tryTitleAttr:`ฝึกเอง`, carried:`ตัวทด`,
+  lessons:{
+    add1:{title:`บวกเลข 1 หลัก`, desc:`7 + 5 = ? เริ่มรู้จัก "ครบสิบ"`},
+    add2n:{title:`บวก 2 หลัก (ไม่ทด)`, desc:`23 + 14 บวกตรงๆ ไม่ต้องทด`},
+    add2c:{title:`บวก 2 หลัก (มีทด)`, desc:`27 + 15 หน่วยเกิน 10 ต้องทด`},
+    sub1:{title:`ลบเลข 1 หลัก`, desc:`8 − 3 = ? ลบง่ายๆ`},
+    sub2n:{title:`ลบ 2 หลัก (ไม่ยืม)`, desc:`48 − 25 ลบตรงๆ ไม่ต้องยืม`},
+    sub2b:{title:`ลบ 2 หลัก (มียืม)`, desc:`32 − 15 หน่วยไม่พอ ต้องยืม`},
+  },
+  concreteAdd:(a,b)=>`นับเม็ดหลักหน่วยที่ต้องบวกกัน: ${a} + ${b}`,
+  concreteSub:`เม็ดส้ม = หลักหน่วยของตัวตั้ง  •  แท่งฟ้า = หลักสิบ`,
+  concreteTensAll:`หลักสิบ: บวก/ลบ ตามปกติได้เลย 👍`,
+  concreteLeftover:(n)=>`เหลือ ${n} เม็ดที่หลักหน่วย`,
+  concreteBorrowed:(total)=>`ยืมมา 10 เม็ด ตอนนี้มี ${total} เม็ดที่หลักหน่วย`,
+  concreteTensBars:(c,a,b)=> c? `นับแท่งฟ้า: ตัวทด ${c} (เขียว) + ${a} + ${b}` : `นับแท่งฟ้า: ${a} + ${b}`,
+  concreteTensSub:(a,b,r)=>`นับแท่งฟ้า ${a} แท่ง แล้วตัด ${b} แท่งที่จางออก เหลือ ${r}`,
+  stepLabel:(i,n)=>`ขั้นที่ ${i}/${n}`, stepStart:`แตะ "ต่อไป ▶" เพื่อเริ่ม`,
+  tryStartSay:`แตะช่องคำตอบ (เส้นประ) แล้วกดตัวเลข  ทำหลักหน่วยก่อนนะ!`,
+  watchStartSay:`กดปุ่ม <b>ต่อไป ▶</b> เพื่อดูทีละขั้นนะ`,
+  okMsg:(a,op,b,ans)=>`<b>เก่งมาก!</b> ${a} ${op} ${b} = <b>${ans}</b> ถูกต้องเลย! 🎉`,
+  hintCarry:(sum)=>`ช่องหน่วยบวกกันได้ <b>${sum}</b> ซึ่งเกิน 10 นะ  ต้อง <b>ทด 1</b> ขึ้นไปหลักสิบ ลองกดปุ่ม <b>ช่วยหน่อย</b> ดูวิธีได้เลย`,
+  hintBorrow:(a,b)=>`หลักหน่วย <span class="h-ones">${a}</span> ลบ <span class="h-ones">${b}</span> ไม่ได้ (ไม่พอ) ต้อง <b>ยืม 1 สิบ</b> มาก่อน กดปุ่ม <b>ช่วยหน่อย</b> ได้นะ`,
+  hintGeneric:`เกือบแล้ว! ช่องสีแดงลองแก้ใหม่นะ 💪`,
+  addStart:`มาบวกกัน! กติกาคือ <b>เริ่มจากหลักหน่วยก่อนเสมอ</b> (ตัวขวาสุด)`,
+  addOnes:(oA,oB,oSum)=>`หลักหน่วย: <span class="h-ones">${oA}</span> + <span class="h-ones">${oB}</span> = <b>${oSum}</b>  ลองนับเม็ดส้มดู`,
+  addBundle:(oSum)=>`ได้ <b>${oSum}</b> เม็ด! แต่ช่องหน่วยใส่ได้แค่เลข 0–9  พอครบ <b>10</b> เมื่อไหร่ เรา <b>มัดรวมเป็น 1 สิบ</b> ได้เลย`,
+  addFly:`มัด 10 หน่วยเป็น 1 แท่งสิบ แล้ว <b>ส่งขึ้นไปข้างบน</b> — นี่แหละคือคำว่า <b>"ทด 1"</b> ✨`,
+  addLeftover:(oRes)=>`เหลือเศษ <b>${oRes}</b> เม็ด → เขียน <span class="h-ones">${oRes}</span> ในช่องหน่วยของคำตอบ`,
+  addNoCarry:(oRes)=>`ไม่เกิน 10 ไม่ต้องทด → เขียน <span class="h-ones">${oRes}</span> ในช่องหน่วยได้เลย`,
+  addBundleWrite:(oSum)=>`ครบ <b>10 เม็ดพอดี</b>! มัดรวมเป็น <b>1 แท่งฟ้า</b> (สิบ) แล้วเขียน <b>${oSum}</b> ไว้ข้างล่างให้ตรงหลักเลย`,
+  concreteBundled:`10 เม็ด = 1 แท่งฟ้า (สิบ)`,
+  addSplit:(oSum)=>`ทีนี้ค่อยๆ นะ: เก็บ <b>${oSum%10}</b> ไว้ที่หลักหน่วย แล้วยก <b>1</b> ขึ้นไปทดไว้ข้างบน ✨`,
+  addTens:(label,tSum)=>`ทีนี้หลักสิบ: ${label} = <b>${tSum}</b>`,
+  addWriteTens:(tSum,ans)=>`เขียน <span class="h-tens">${tSum}</span> ในช่องสิบ → คำตอบคือ <b>${ans}</b> 🎉`,
+  answerMsg:(ans)=>`คำตอบคือ <b>${ans}</b> 🎉`,
+  subStart:`มาลบกัน! เริ่มจาก <b>หลักหน่วยก่อน</b> เหมือนเดิม`,
+  subCant:(oA,oB)=>`หลักหน่วย: <span class="h-ones">${oA}</span> − <span class="h-ones">${oB}</span> ... เอ๊ะ <b>${oA} น้อยกว่า ${oB}</b> ลบไม่ได้!`,
+  subBorrow:`ไม่พอก็ <b>ยืมจากหลักสิบ 1 แท่ง</b> เอามาแตกเป็น 10 หน่วย`,
+  subAfterBorrow:(oA,oA2,tA)=>`ตอนนี้หลักหน่วยมี <b>${oA}+10 = ${oA2}</b> เม็ด  และหลักสิบเหลือ <span class="h-tens">${tA-1}</span> (จาก ${tA} ยืมไป 1)`,
+  subDoIt:(oA2,oB,oRes)=>`ลบได้แล้ว: <b>${oA2} − ${oB} = ${oRes}</b> → เขียน <span class="h-ones">${oRes}</span> ในช่องหน่วย`,
+  subOnesPlain:(oA,oB,oRes)=>`หลักหน่วย: <span class="h-ones">${oA}</span> − <span class="h-ones">${oB}</span> = <b>${oRes}</b>  (เอา ${oB} เม็ดออก)`,
+  subTens:(tA2,tB,tRes)=>`หลักสิบ: <span class="h-tens">${tA2}</span> − <span class="h-tens">${tB}</span> = <b>${tRes}</b>`,
+},
+en:{
+  title:`Add & Subtract — See How Carrying Works`, brand:`Birdie Math`,
+  heroH1:`Let's learn carrying!`, heroSub:`See how 10 ones become 1 ten`,
+  sectionLabel:`Start easy, get harder`, watchBtn:`👀 Watch`, tryBtn:`✏️ Try it`,
+  tagHard:`Tricky`, tagEasy:`Easy`, helpBtn:`💡 Help me`, checkBtn:`Check ✓`,
+  nextBtn:`Next ▶`, doneBtn:`Done ✓  New problem`, tryTitleAttr:`Try it`, carried:`carried`,
+  lessons:{
+    add1:{title:`Add 1-digit`, desc:`7 + 5 = ? Meet making ten`},
+    add2n:{title:`Add 2-digit (no carry)`, desc:`23 + 14 — add straight across`},
+    add2c:{title:`Add 2-digit (carry)`, desc:`27 + 15 — ones pass 10, carry!`},
+    sub1:{title:`Subtract 1-digit`, desc:`8 − 3 = ? Easy take-away`},
+    sub2n:{title:`Subtract 2-digit (no borrow)`, desc:`48 − 25 — subtract straight across`},
+    sub2b:{title:`Subtract 2-digit (borrow)`, desc:`32 − 15 — not enough ones, borrow!`},
+  },
+  concreteAdd:(a,b)=>`Count the ones to add: ${a} + ${b}`,
+  concreteSub:`Orange = ones   •   Blue bar = tens`,
+  concreteTensAll:`Tens: just add/subtract as usual 👍`,
+  concreteLeftover:(n)=>`${n} ones left over`,
+  concreteBorrowed:(total)=>`Borrowed 10 ones — now ${total} ones here`,
+  concreteTensBars:(c,a,b)=> c? `Count the bars: carried ${c} (green) + ${a} + ${b}` : `Count the bars: ${a} + ${b}`,
+  concreteTensSub:(a,b,r)=>`Count ${a} bars, fade out ${b}, leaving ${r}`,
+  stepLabel:(i,n)=>`Step ${i} of ${n}`, stepStart:`Tap "Next ▶" to start`,
+  tryStartSay:`Tap a dotted box and press numbers. Do the ones first!`,
+  watchStartSay:`Press <b>Next ▶</b> to go step by step.`,
+  okMsg:(a,op,b,ans)=>`<b>Great job!</b> ${a} ${op} ${b} = <b>${ans}</b> — that's right! 🎉`,
+  hintCarry:(sum)=>`The ones add up to <b>${sum}</b>, more than 10. You need to <b>carry 1</b> up to the tens. Tap <b>Help me</b> to see how.`,
+  hintBorrow:(a,b)=>`You can't take <span class="h-ones">${b}</span> from <span class="h-ones">${a}</span> — not enough. <b>Borrow 1 ten</b> first. Tap <b>Help me</b>.`,
+  hintGeneric:`So close! Fix the red box and try again 💪`,
+  addStart:`Let's add! The rule: <b>always start with the ones</b> (the box on the right).`,
+  addOnes:(oA,oB,oSum)=>`Ones: <span class="h-ones">${oA}</span> + <span class="h-ones">${oB}</span> = <b>${oSum}</b>. Count the orange dots!`,
+  addBundle:(oSum)=>`That's <b>${oSum}</b> dots! But the ones box only holds 0–9. When we reach <b>10</b>, we <b>bundle them into 1 ten</b>.`,
+  addFly:`Bundle 10 ones into 1 blue bar and <b>send it up</b> — that's what <b>"carry 1"</b> means! ✨`,
+  addLeftover:(oRes)=>`<b>${oRes}</b> dots are left → write <span class="h-ones">${oRes}</span> in the ones box.`,
+  addNoCarry:(oRes)=>`Under 10, no carry → just write <span class="h-ones">${oRes}</span> in the ones box.`,
+  addBundleWrite:(oSum)=>`Exactly <b>10</b>! Bundle them into <b>1 blue bar</b>, and write <b>${oSum}</b> below, lined up with the columns.`,
+  concreteBundled:`10 dots = 1 blue ten-bar`,
+  addSplit:(oSum)=>`Now slowly: keep <b>${oSum%10}</b> in the ones, and lift the <b>1</b> up to carry ✨`,
+  addTens:(label,tSum)=>`Now the tens: ${label} = <b>${tSum}</b>`,
+  addWriteTens:(tSum,ans)=>`Write <span class="h-tens">${tSum}</span> in the tens box → the answer is <b>${ans}</b>! 🎉`,
+  answerMsg:(ans)=>`The answer is <b>${ans}</b>! 🎉`,
+  subStart:`Let's subtract! Start with the <b>ones</b>, same as before.`,
+  subCant:(oA,oB)=>`Ones: <span class="h-ones">${oA}</span> − <span class="h-ones">${oB}</span> ... uh oh, <b>${oA} is less than ${oB}</b>. We can't!`,
+  subBorrow:`Not enough, so <b>borrow 1 bar from the tens</b> and break it into 10 ones.`,
+  subAfterBorrow:(oA,oA2,tA)=>`Now the ones have <b>${oA}+10 = ${oA2}</b> dots, and the tens have <span class="h-tens">${tA-1}</span> left (was ${tA}, lent 1).`,
+  subDoIt:(oA2,oB,oRes)=>`Now we can: <b>${oA2} − ${oB} = ${oRes}</b> → write <span class="h-ones">${oRes}</span> in the ones box.`,
+  subOnesPlain:(oA,oB,oRes)=>`Ones: <span class="h-ones">${oA}</span> − <span class="h-ones">${oB}</span> = <b>${oRes}</b>  (take ${oB} dots away)`,
+  subTens:(tA2,tB,tRes)=>`Tens: <span class="h-tens">${tA2}</span> − <span class="h-tens">${tB}</span> = <b>${tRes}</b>`,
+},
+};
+function S(){ return T[state.lang]; }
+
+/* ================= problem generator ================= */
+const rnd=(lo,hi)=>Math.floor(Math.random()*(hi-lo+1))+lo;
+const ones=n=>n%10, tens=n=>Math.floor(n/10);
+
+function makeProblem(key){
+  let a,b,g=0;
+  while(g++<400){
+    if(key==='add1'){ a=rnd(2,9); b=rnd(2,9); return {a,b}; }
+    if(key==='add2n'){ a=rnd(11,52); b=rnd(11,46); if(ones(a)+ones(b)<10 && tens(a)+tens(b)<10) return{a,b}; }
+    if(key==='add2c'){ a=rnd(14,58); b=rnd(15,39); if(ones(a)+ones(b)>=10 && tens(a)+tens(b)+1<=9) return{a,b}; }
+    if(key==='sub1'){ a=rnd(4,9); b=rnd(1,a); return {a,b}; }
+    if(key==='sub2n'){ a=rnd(35,99); b=rnd(11,a-10); if(ones(a)>=ones(b) && tens(a)>=tens(b)) return{a,b}; }
+    if(key==='sub2b'){ a=rnd(22,95); b=rnd(13,a-8); if(ones(a)<ones(b) && tens(a)>tens(b)) return{a,b}; }
+  }
+  return {a:27,b:15};
+}
+
+/* ================= board render ================= */
+const $=id=>document.getElementById(id);
+
+function answer(){ return LESSONS[state.key].op==='+' ? state.a+state.b : state.a-state.b; }
+function carryVal(){ // for add
+  return ones(state.a)+ones(state.b)>=10 ? 1 : 0;
+}
+function borrowNeeded(){ // for sub
+  return ones(state.a) < ones(state.b);
+}
+
+function renderSum(mode){
+  const op = LESSONS[state.key].op;
+  const A=state.a, B=state.b, ans=answer();
+  const isAdd = op==='+';
+  const showTens = A>=10 || B>=10 || ans>=10;
+
+  // carry / borrow row
+  let carryCell='';
+  if(isAdd){
+    if(mode==='try' && carryVal()){
+      carryCell = `<div class="ans carry" data-slot="carry" id="in-carry">?</div>`;
+    } else {
+      carryCell = `<span class="carrymark" id="cm-tens">1</span>`;
+    }
+  }
+  const carryRow = `<div class="row">
+      <div class="cell"></div>
+      <div class="cell" data-col="tens" style="height:52px">${carryCell}</div>
+      <div class="cell" data-col="ones" style="height:52px"></div></div>`;
+
+  const dTens=(n)=> n>=10 ? `<span class="digit tens">${tens(n)}</span>` : ``;
+  const dOnes=(n)=> `<span class="digit ones">${ones(n)}</span>`;
+
+  // borrow visuals baked into A row for sub
+  let aTensInner = A>=10 ? `<span class="digit tens" id="a-tens">${tens(A)}</span>
+        <span class="borrowmark" id="bm">${tens(A)-1}</span>
+        <span class="strike" id="strk-tens"></span>` : ``;
+  const rowA = `<div class="row">
+      <div class="cell"></div>
+      <div class="cell" data-col="tens" id="g2-tens">${isAdd?dTens(A):aTensInner}</div>
+      <div class="cell" data-col="ones" id="g2-ones">${isAdd?dOnes(A):`<span class="digit ones" id="a-ones">${ones(A)}</span>`}</div></div>`;
+
+  const rowB = `<div class="row">
+      <div class="cell op">${op}</div>
+      <div class="cell" data-col="tens">${dTens(B)}</div>
+      <div class="cell" data-col="ones">${dOnes(B)}</div></div>`;
+
+  // answer row
+  let ansOnes, ansTens;
+  if(mode==='try'){
+    ansTens = showTens ? `<div class="ans tens" data-slot="tens" id="in-tens"></div>` : ``;
+    ansOnes = `<div class="ans ones" data-slot="ones" id="in-ones"></div>`;
+  } else {
+    ansTens = showTens ? `<span class="digit tens" id="out-tens"></span>` : ``;
+    ansOnes = `<span class="digit ones" id="out-ones"></span>`;
+  }
+  const rowAns = `<div class="row">
+      <div class="cell"></div>
+      <div class="cell" data-col="tens">${ansTens}</div>
+      <div class="cell" data-col="ones">${ansOnes}</div></div>`;
+
+  $('sum').innerHTML = carryRow + rowA + rowB + `<div class="rule"></div>` + rowAns;
+
+  if(mode==='try'){
+    document.querySelectorAll('#sum .ans').forEach(el=>{
+      el.onclick=()=>selectCell(el);
+    });
+    // default select ones
+    const io=$('in-ones'); if(io) selectCell(io);
+  }
+}
+
+/* ================= ten-frame concretiser ================= */
+function frameHTML(fillCount, splitAt){
+  let slots='';
+  for(let i=0;i<10;i++){
+    let cls='';
+    if(i<fillCount){ cls='fill'; if(splitAt!=null) cls += (i<splitAt ? ' groupA' : ' groupB'); }
+    slots+=`<div class="slot ${cls}"></div>`;
+  }
+  return `<div class="frame10" id="frame10">${slots}</div>`;
+}
+function tensStackHTML(count){
+  let bars='';
+  for(let i=0;i<count;i++) bars+=`<div class="tenbar" data-i="${i}"><span></span><span></span></div>`;
+  return `<div class="tensStack" id="tensStack">${bars}</div>`;
+}
+function extrasHTML(count, animate, cls){
+  cls = cls || '';
+  let s='';
+  for(let i=0;i<count;i++) s+=`<div class="slot fill ${cls} ${animate?'popdot':''}" style="animation-delay:${i*70}ms"></div>`;
+  return `<div class="extras" id="extras">${s}</div>`;
+}
+function showOnesFrame(count, splitAt, animateExtra){
+  const extra = count>10 ? count-10 : 0;
+  const extraCls = splitAt!=null ? 'groupB' : '';
+  $('frames').innerHTML = frameHTML(Math.min(count,10), splitAt) + (extra?extrasHTML(extra,!!animateExtra,extraCls):'');
+}
+function showLegend(a,b){ const lg=$('grouplegend'); if(!lg) return; lg.style.display='flex';
+  lg.innerHTML = `<span class="pill A">${a}</span><span class="plus">+</span><span class="pill B">${b}</span>`; }
+function hideLegend(){ const lg=$('grouplegend'); if(lg) lg.style.display='none'; }
+
+function renderConcrete(){
+  const A=state.a, B=state.b, isAdd=LESSONS[state.key].op==='+';
+  if(isAdd){
+    showOnesFrame(ones(A)+ones(B), ones(A));
+    showLegend(ones(A), ones(B));
+    $('concreteLabel').textContent = S().concreteAdd(ones(A),ones(B));
+  } else {
+    hideLegend();
+    showOnesFrame(ones(A));
+    $('concreteLabel').textContent = S().concreteSub;
+  }
+}
+
+/* ================= TRY mode ================= */
+let cellVals={};
+function selectCell(el){
+  document.querySelectorAll('#sum .ans').forEach(x=>x.classList.remove('sel'));
+  el.classList.add('sel'); state.sel=el.dataset.slot;
+}
+function padPress(v){
+  if(!state.sel) return;
+  const el=document.querySelector(`#sum .ans[data-slot="${state.sel}"]`);
+  if(!el) return;
+  el.classList.remove('ok','bad');
+  if(v==='del'){ cellVals[state.sel]=''; el.textContent=''; return; }
+  cellVals[state.sel]=v; el.textContent=v;
+  // auto-advance selection ones -> carry -> tens for nicer flow
+}
+function checkAnswer(){
+  const ans=answer();
+  const wantOnes=ones(ans), wantTens=tens(ans);
+  const isAdd=LESSONS[state.key].op==='+';
+  let allOk=true;
+  const io=$('in-ones'), it=$('in-tens'), ic=$('in-carry');
+  const mark=(el,ok,soft)=>{ if(!el)return; el.classList.remove('ok','bad','sel'); el.classList.add(ok?'ok':'bad'); if(!ok&&!soft)allOk=false; };
+
+  mark(io, (parseInt(cellVals.ones ?? '-1'))===wantOnes);
+  if(it) mark(it, (parseInt(cellVals.tens||'0'))===wantTens);
+  // carry box: feedback only, does not block success
+  if(ic && cellVals.carry) mark(ic, parseInt(cellVals.carry)===carryVal(), true);
+
+  if(allOk){
+    setSay(S().okMsg(state.a,LESSONS[state.key].op,state.b,ans));
+    celebrate(); $('btnCheck').disabled=true;
+    setTimeout(()=>{}, 10);
+  } else {
+    // targeted hint
+    if(isAdd && carryVal() && (parseInt(cellVals.carry||'-1'))!==1){
+      setSay(S().hintCarry(ones(state.a)+ones(state.b)));
+    } else if(!isAdd && borrowNeeded()){
+      setSay(S().hintBorrow(ones(state.a),ones(state.b)));
+    } else {
+      setSay(S().hintGeneric);
+    }
+  }
+}
+
+/* ================= WATCH mode (guided steps) ================= */
+function buildSteps(){
+  const op=LESSONS[state.key].op, A=state.a, B=state.b, ans=answer();
+  const steps=[];
+  const oA=ones(A),oB=ones(B),tA=tens(A),tB=tens(B);
+
+  if(op==='+'){
+    const oSum=oA+oB, c=oSum>=10?1:0, oRes=oSum%10, tSum=tA+tB+c;
+    steps.push({say:S().addStart, col:'ones', fx:()=>{}});
+    steps.push({say:S().addOnes(oA,oB,oSum), col:'ones', fx:()=>{fillOnes(oA,oB); showLegend(oA,oB);}});
+    if(c){
+      steps.push({say:S().addBundleWrite(oSum), col:'both', fx:()=>{bundleToBar(oSum); writeSixteen(oSum);}});
+      steps.push({say:S().addSplit(oSum), col:'ones', pulse:'cm-tens', fx:()=>splitCarry()});
+    } else {
+      steps.push({say:S().addNoCarry(oRes), col:'ones', pulse:'out-ones', fx:()=>{hideLegend(); writeOut('ones',oRes);}});
+    }
+    if(A>=10||B>=10||ans>=10){
+      const label = c ? `<b>1 (${S().carried})</b> + <span class="h-tens">${tA}</span> + <span class="h-tens">${tB}</span>` : `<span class="h-tens">${tA}</span> + <span class="h-tens">${tB}</span>`;
+      steps.push({say:S().addTens(label,tSum), col:'tens', fx:()=>showTensBarsAdd(c,tA,tB)});
+      steps.push({say:S().addWriteTens(tSum,ans), col:'tens', pulse:'out-tens', fx:()=>{writeOut('tens',tSum); done(ans);}});
+    } else {
+      steps.push({say:S().answerMsg(ans), col:null, fx:()=>done(ans)});
+    }
+  } else {
+    const borrow = oA<oB;
+    const oA2 = borrow ? oA+10 : oA, tA2 = borrow ? tA-1 : tA;
+    const oRes=oA2-oB, tRes=tA2-tB;
+    steps.push({say:S().subStart, col:'ones', fx:()=>{}});
+    if(borrow){
+      steps.push({say:S().subCant(oA,oB), col:'ones', fx:()=>fillOnes(oA,0)});
+      steps.push({say:S().subBorrow, col:'both', pulse:'bm', fx:()=>borrowDown()});
+      steps.push({say:S().subAfterBorrow(oA,oA2,tA), col:'both', pulse:'bm', fx:()=>showBorrowMark()});
+      steps.push({say:S().subDoIt(oA2,oB,oRes), col:'ones', pulse:'out-ones', fx:()=>{removeOnes(oB); writeOut('ones',oRes);
+        setTimeout(()=>{ hideLegend(); $('concreteLabel').textContent=S().concreteLeftover(oRes); }, oB*130+150); }});
+    } else {
+      steps.push({say:S().subOnesPlain(oA,oB,oRes), col:'ones', pulse:'out-ones', fx:()=>{fillOnes(oA,0); setTimeout(()=>{removeOnes(oB); writeOut('ones',oRes);
+        setTimeout(()=>{ hideLegend(); $('concreteLabel').textContent=S().concreteLeftover(oRes); }, oB*130+150); },650);}});
+    }
+    if(A>=10){
+      steps.push({say:S().subTens(tA2,tB,tRes), col:'tens', fx:()=>showTensBarsSub(tA2,tB,tRes)});
+      steps.push({say:S().answerMsg(ans), col:'tens', pulse:(tRes>0?'out-tens':null), fx:()=>{if(tRes>0)writeOut('tens',tRes); done(ans);}});
+    } else {
+      steps.push({say:S().answerMsg(ans), col:null, fx:()=>done(ans)});
+    }
+  }
+  return steps;
+}
+
+/* ---- watch fx helpers ---- */
+function clearFocus(){
+  document.querySelectorAll('#sum .focuscol').forEach(e=>e.classList.remove('focuscol','f-ones','f-tens'));
+  document.querySelectorAll('#sum .focuscell').forEach(e=>e.classList.remove('focuscell'));
+}
+function focusCol(col){
+  clearFocus();
+  const cols = col==='both'?['tens','ones']:[col];
+  cols.forEach(c=>document.querySelectorAll(`#sum [data-col="${c}"]`).forEach(e=>e.classList.add('focuscol','f-'+c)));
+}
+function pulseCell(id){ const p=$(id); if(p) p.classList.add('focuscell'); }
+function fillOnes(x,y){
+  showOnesFrame(x+y, x);
+  document.querySelectorAll('#frame10 .slot.fill, #extras .slot.fill').forEach(s=>s.classList.add('pulse'));
+}
+function bundleToBar(oSum){
+  hideLegend();
+  const leftover = oSum-10;
+  $('frames').innerHTML = `<div class="tenwrap"><div class="tenbarv ascarry pop" id="tenBar"><span>10</span></div></div>` +
+    (leftover>0?extrasHTML(leftover,false,'groupB'):'');
+  $('concreteLabel').textContent = S().concreteBundled;
+}
+function tensBarHTML(n, cls){
+  let s=''; for(let i=0;i<n;i++) s+=`<div class="tenbarmini ${cls} pop" style="animation-delay:${i*60}ms"></div>`;
+  return s;
+}
+function showTensBarsAdd(carryCount, aTens, bTens){
+  const bars = tensBarHTML(carryCount,'carry') + tensBarHTML(aTens,'') + tensBarHTML(bTens,'groupB');
+  $('frames').innerHTML = `<div class="tenbars">${bars}</div>`;
+  const lg=$('grouplegend');
+  if(lg){ lg.style.display='flex';
+    const parts=[]; if(carryCount) parts.push(`<span class="pill carry">${carryCount}</span>`);
+    parts.push(`<span class="pill tensA">${aTens}</span>`); parts.push(`<span class="pill tensB">${bTens}</span>`);
+    lg.innerHTML = parts.join('<span class="plus">+</span>');
+  }
+  $('concreteLabel').textContent = S().concreteTensBars(carryCount, aTens, bTens);
+}
+function showTensBarsSub(tA2, tB, tRes){
+  let bars='';
+  for(let i=0;i<tA2;i++) bars += `<div class="tenbarmini pop ${i>=tRes?'removedbar':''}" style="animation-delay:${i*60}ms"></div>`;
+  $('frames').innerHTML = `<div class="tenbars">${bars}</div>`;
+  const lg=$('grouplegend');
+  if(lg){ lg.style.display='flex';
+    lg.innerHTML = `<span class="pill tensA">${tA2}</span><span class="plus">−</span><span class="pill tensB">${tB}</span>`; }
+  $('concreteLabel').textContent = S().concreteTensSub(tA2,tB,tRes);
+}
+function borrowDown(){
+  $('frames').innerHTML = `<div class="tenwrap"><div class="tenbarv drop">10</div></div>`;
+  setTimeout(()=>{
+    const oA=ones(state.a);
+    showOnesFrame(oA+10, oA, true);
+    showLegend(oA, 10);
+    $('concreteLabel').textContent = S().concreteBorrowed(oA+10);
+  },550);
+}
+function showBorrowMark(){ const bm=$('bm'); if(bm)bm.classList.add('show'); const s=$('strk-tens'); if(s)s.classList.add('show'); }
+function removeOnes(count){
+  const fills=[...document.querySelectorAll('.slot.fill')];
+  let removed=0;
+  const iv=setInterval(()=>{ if(removed>=count){clearInterval(iv);return;}
+    const el=fills[fills.length-1-removed]; if(el){el.style.transition='all .2s';el.style.background='#E4DDCB';el.style.transform='scale(.4)';el.classList.remove('fill');}
+    removed++; },130);
+}
+function writeSixteen(oSum){
+  const ot=$('out-tens'), oo=$('out-ones');
+  if(oo){ oo.textContent=oSum%10; oo.style.animation='popin .4s cubic-bezier(.2,1.5,.4,1)'; }
+  if(ot){ ot.textContent=Math.floor(oSum/10); ot.classList.add('ascarry'); ot.style.animation='popin .4s cubic-bezier(.2,1.5,.4,1)'; }
+}
+function flyDigitUp(fromEl,toEl,onDone){
+  try{
+    const a=fromEl.getBoundingClientRect(), b=toEl.getBoundingClientRect();
+    const fly=document.createElement('div'); fly.className='flydigit';
+    fly.textContent=fromEl.textContent||'1';
+    fly.style.left=a.left+'px'; fly.style.top=a.top+'px'; fly.style.width=a.width+'px'; fly.style.height=a.height+'px';
+    document.body.appendChild(fly); fromEl.style.visibility='hidden';
+    const raf=window.requestAnimationFrame||((f)=>setTimeout(f,16));
+    raf(()=>{ fly.style.transform=`translate(${(b.left+b.width/2)-(a.left+a.width/2)}px, ${(b.top+b.height/2)-(a.top+a.height/2)}px) scale(.92)`; });
+    setTimeout(()=>{ fly.remove(); if(fromEl) fromEl.style.visibility=''; if(onDone) onDone(); }, 820);
+  }catch(e){ if(onDone) onDone(); }
+}
+function splitCarry(){
+  const oRes=ones(state.a)+ones(state.b)-10;
+  const from=$('out-tens'), to=$('cm-tens');
+  const bar=$('tenBar'); if(bar) bar.classList.add('fadeup');
+  if(from && to){
+    flyDigitUp(from, to, ()=>{ from.textContent=''; from.classList.remove('ascarry'); from.style.animation='';
+      to.classList.add('show'); pulseCell('cm-tens'); });
+  }
+  setTimeout(()=>{ showOnesFrame(oRes); $('concreteLabel').textContent=S().concreteLeftover(oRes); }, bar?520:0);
+}
+function writeOut(col,val){
+  const el=$('out-'+col); if(el){ el.textContent=val; el.style.animation='popin .4s cubic-bezier(.2,1.5,.4,1)'; }
+}
+function done(ans){ celebrate(); }
+
+/* ================= narration + celebration ================= */
+function setSay(html){ $('sayText').innerHTML=html; }
+function celebrate(){
+  const box=$('stars'); const em=['⭐','🌟','✨','🎉','💛'];
+  for(let i=0;i<18;i++){ const s=document.createElement('div'); s.className='star';
+    s.textContent=em[rnd(0,4)]; s.style.left=rnd(2,96)+'%'; s.style.top=(-10-rnd(0,30))+'px';
+    s.style.animationDelay=(rnd(0,400))+'ms'; box.appendChild(s); setTimeout(()=>s.remove(),1600); }
+  beep();
+}
+let actx;
+function beep(){ try{ actx=actx||new (window.AudioContext||window.webkitAudioContext)();
+  [523,659,784].forEach((f,i)=>{const o=actx.createOscillator(),g=actx.createGain();
+    o.type='sine';o.frequency.value=f;o.connect(g);g.connect(actx.destination);
+    const t=actx.currentTime+i*0.12;g.gain.setValueAtTime(0.0001,t);g.gain.exponentialRampToValueAtTime(0.15,t+0.02);
+    g.gain.exponentialRampToValueAtTime(0.0001,t+0.18);o.start(t);o.stop(t+0.2);});}catch(e){} }
+
+/* ================= navigation ================= */
+function goHome(){ $('home').style.display='block'; $('board').classList.remove('show'); $('back').classList.remove('show'); }
+function openLesson(key){
+  state.key=key; $('home').style.display='none'; $('board').classList.add('show'); $('back').classList.add('show');
+  $('boardTitle').textContent=S().lessons[key].title;
+  setMode('try');
+}
+function newProblem(){ const {a,b}=makeProblem(state.key); state.a=a; state.b=b; state.sel=null; }
+function renderRound(){
+  cellVals={};
+  if(state.mode==='try'){ renderSum('try'); renderConcrete();
+    setSay(S().tryStartSay); const bc=$('btnCheck'); if(bc) bc.disabled=false; }
+  else { renderSum('watch'); renderConcrete(); state.watchSteps=buildSteps(); state.watchIdx=0;
+    clearFocus(); renderStepbar(0,state.watchSteps.length);
+    setSay(S().watchStartSay); updateWatchBtn(); }
+}
+function newRound(){ newProblem(); renderRound(); }
+function renderControls(){
+  const s=S();
+  if(state.mode==='try'){
+    $('controls').innerHTML=`
+      <button class="btn sun" id="btnHelp">${s.helpBtn}</button>
+      <button class="btn go" id="btnCheck">${s.checkBtn}</button>
+      <button class="btn ghost" id="btnNew">🔄</button>`;
+    $('btnHelp').onclick=()=>setMode('watch');
+    $('btnCheck').onclick=checkAnswer;
+    $('btnNew').onclick=newRound;
+  } else {
+    $('controls').innerHTML=`
+      <button class="btn primary" id="btnNext">${s.nextBtn}</button>
+      <button class="btn ghost" id="btnBackTry" title="${s.tryTitleAttr}">✏️</button>
+      <button class="btn ghost" id="btnNew2">🔄</button>`;
+    $('btnNext').onclick=nextStep;
+    $('btnBackTry').onclick=()=>setMode('try');
+    $('btnNew2').onclick=newRound;
+  }
+}
+function setMode(m){
+  state.mode=m;
+  $('mTry').classList.toggle('active',m==='try');
+  $('mWatch').classList.toggle('active',m==='watch');
+  $('pad').classList.toggle('hidden', m!=='try');
+  $('stepbar').style.display = (m==='watch')?'flex':'none';
+  clearFocus();
+  renderControls();
+  newRound();
+}
+function updateWatchBtn(){
+  const b=$('btnNext'); if(!b)return;
+  b.textContent = state.watchIdx>=state.watchSteps.length ? S().doneBtn : S().nextBtn;
+}
+function renderStepbar(cur,total){
+  const sn=$('stepNum'); if(sn) sn.textContent = cur<=0 ? S().stepStart : S().stepLabel(cur,total);
+  const sd=$('stepDots'); if(sd){ let d=''; for(let i=0;i<total;i++) d+=`<i class="${i<cur?'on':''}"></i>`; sd.innerHTML=d; }
+}
+let stepLock=false;
+function nextStep(){
+  if(stepLock) return;
+  const total=state.watchSteps.length;
+  if(state.watchIdx>=total){ newRound(); return; }
+  const st=state.watchSteps[state.watchIdx];
+  setSay(st.say);
+  if(st.col) focusCol(st.col); else clearFocus();
+  if(st.fx) st.fx();
+  if(st.pulse) pulseCell(st.pulse);
+  state.watchIdx++;
+  renderStepbar(state.watchIdx,total);
+  updateWatchBtn();
+  stepLock=true;
+  const b=$('btnNext'); if(b) b.style.opacity='.5';
+  setTimeout(()=>{ stepLock=false; const bb=$('btnNext'); if(bb) bb.style.opacity='1'; }, 750);
+}
+
+/* ================= build home + pad ================= */
+function buildHome(){
+  const s=S(), grid=$('lessonGrid');
+  grid.innerHTML = Object.entries(LESSONS).map(([k,l])=>`
+    <button class="lesson ${l.cls}" data-k="${k}">
+      <span class="icon">${l.icon}</span>
+      <span class="t">${s.lessons[k].title}</span>
+      <span class="d">${s.lessons[k].desc}</span>
+      <span class="tag ${l.tag}">${l.tag==='hard'?s.tagHard:s.tagEasy}</span>
+    </button>`).join('');
+  grid.querySelectorAll('.lesson').forEach(b=>b.onclick=()=>openLesson(b.dataset.k));
+}
+function applyStatic(){
+  const s=S();
+  document.title=s.title;
+  $('brandName').textContent=s.brand;
+  $('heroH1').textContent=s.heroH1;
+  $('heroSub').textContent=s.heroSub;
+  $('sectionLabel').textContent=s.sectionLabel;
+  $('mWatch').textContent=s.watchBtn;
+  $('mTry').textContent=s.tryBtn;
+  document.querySelectorAll('#langtoggle button').forEach(b=>b.classList.toggle('active', b.dataset.l===state.lang));
+}
+function setLang(l){
+  if(l===state.lang) return;
+  state.lang=l; applyStatic(); buildHome();
+  if($('board').classList.contains('show')){
+    $('boardTitle').textContent=S().lessons[state.key].title;
+    renderControls(); renderRound();
+  }
+}
+function buildPad(){
+  const keys=['1','2','3','4','5','6','7','8','9','0'];
+  $('pad').innerHTML = keys.map(k=>`<button data-v="${k}">${k}</button>`).join('') +
+    `<button class="del" data-v="del">⌫</button>`;
+  $('pad').querySelectorAll('button').forEach(b=>b.onclick=()=>padPress(b.dataset.v));
+}
+
+$('back').onclick=goHome;
+$('mTry').onclick=()=>setMode('try');
+$('mWatch').onclick=()=>setMode('watch');
+document.querySelectorAll('#langtoggle button').forEach(b=>b.onclick=()=>setLang(b.dataset.l));
+applyStatic(); buildHome(); buildPad();
+</script>
+</body>
+</html>
