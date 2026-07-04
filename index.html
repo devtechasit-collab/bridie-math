@@ -174,13 +174,13 @@
   /* tens-place bars: same blue as the tens digits above, green if it's the carried one */
   .tenbars{display:flex;justify-content:center;align-items:flex-end;gap:6px;flex-wrap:wrap;min-height:70px}
   .tenbarmini{width:20px;height:60px;border-radius:7px;background:linear-gradient(180deg,#5B9BE8,#2F6FC4);
-    box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.35),0 3px 0 #1F4E8C}
+    box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.35),0 3px 0 #1F4E8C;transition:opacity .35s,filter .35s,transform .35s}
   .tenbarmini.carry{background:linear-gradient(180deg,#3DD9A5,#0E9A6C);
     box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.35),0 3px 0 #0B7A55}
   .tenbarmini.groupB{background:linear-gradient(180deg,#A9CDF0,var(--tens-b));
     box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.35),0 3px 0 #5F8AC0}
   .tenbarmini.pop{animation:popin .4s cubic-bezier(.2,1.5,.4,1) both}
-  .tenbarmini.removedbar{opacity:.28;filter:grayscale(.5)}
+  .tenbarmini.removedbar{opacity:.28;filter:grayscale(.5);transform:scale(.85)}
   .grouplegend .pill.carry{background:var(--carry)}
   .grouplegend .pill.tensA{background:var(--tens)}
   .grouplegend .pill.tensB{background:var(--tens-b);color:#1F4E8C}
@@ -347,7 +347,9 @@ th:{
   answerMsg:(ans)=>`คำตอบคือ <b>${ans}</b> 🎉`,
   subStart:`มาลบกัน! เริ่มจาก <b>หลักหน่วยก่อน</b> เหมือนเดิม`,
   subCant:(oA,oB)=>`หลักหน่วย: <span class="h-ones">${oA}</span> − <span class="h-ones">${oB}</span> ... เอ๊ะ <b>${oA} น้อยกว่า ${oB}</b> ลบไม่ได้!`,
-  subBorrow:(tA,tA2,oA,oA2)=>`ไม่พอก็ <b>ยืมจากหลักสิบ 1 แท่ง</b> เอามาแตกเป็น 10 หน่วย  หลักสิบจาก <span class="h-tens">${tA}</span> เหลือ <span class="h-tens">${tA2}</span>  หลักหน่วยมี <b>${oA}+10 = ${oA2}</b> เม็ด`,
+  subBorrowIntent:`ไม่พอ! ต้อง <b>ยืมจากหลักสิบ 1 แท่ง</b> มาช่วย`,
+  subBorrowTens:(tA,tA2)=>`หลักสิบจาก <span class="h-tens">${tA}</span> เหลือ <span class="h-tens">${tA2}</span> (ยืมไป 1 แท่ง)`,
+  subBorrowOnes:(oA,oA2)=>`แตกแท่งนั้นเป็น <b>10 หน่วย</b>  ตอนนี้หลักหน่วยมี <b>${oA}+10 = ${oA2}</b> เม็ด`,
   subDoIt:(oA2,oB,oRes)=>`ลบได้แล้ว: <b>${oA2} − ${oB} = ${oRes}</b> → เขียน <span class="h-ones">${oRes}</span> ในช่องหน่วย`,
   subOnesPlain:(oA,oB,oRes)=>`หลักหน่วย: <span class="h-ones">${oA}</span> − <span class="h-ones">${oB}</span> = <b>${oRes}</b>  (เอา ${oB} เม็ดออก)`,
   subTens:(tA2,tB,tRes)=>`หลักสิบ: <span class="h-tens">${tA2}</span> − <span class="h-tens">${tB}</span> = <b>${tRes}</b>`,
@@ -395,7 +397,9 @@ en:{
   answerMsg:(ans)=>`The answer is <b>${ans}</b>! 🎉`,
   subStart:`Let's subtract! Start with the <b>ones</b>, same as before.`,
   subCant:(oA,oB)=>`Ones: <span class="h-ones">${oA}</span> − <span class="h-ones">${oB}</span> ... uh oh, <b>${oA} is less than ${oB}</b>. We can't!`,
-  subBorrow:(tA,tA2,oA,oA2)=>`Not enough, so <b>borrow 1 bar from the tens</b> and break it into 10 ones.  The tens go from <span class="h-tens">${tA}</span> down to <span class="h-tens">${tA2}</span>, and the ones now have <b>${oA}+10 = ${oA2}</b> dots.`,
+  subBorrowIntent:`Not enough! We need to <b>borrow 1 bar from the tens</b>.`,
+  subBorrowTens:(tA,tA2)=>`The tens go from <span class="h-tens">${tA}</span> down to <span class="h-tens">${tA2}</span> (lent 1 bar).`,
+  subBorrowOnes:(oA,oA2)=>`Break that bar into <b>10 ones</b>.  Now the ones have <b>${oA}+10 = ${oA2}</b> dots.`,
   subDoIt:(oA2,oB,oRes)=>`Now we can: <b>${oA2} − ${oB} = ${oRes}</b> → write <span class="h-ones">${oRes}</span> in the ones box.`,
   subOnesPlain:(oA,oB,oRes)=>`Ones: <span class="h-ones">${oA}</span> − <span class="h-ones">${oB}</span> = <b>${oRes}</b>  (take ${oB} dots away)`,
   subTens:(tA2,tB,tRes)=>`Tens: <span class="h-tens">${tA2}</span> − <span class="h-tens">${tB}</span> = <b>${tRes}</b>`,
@@ -638,7 +642,9 @@ function buildSteps(){
     steps.push({say:S().subStart, col:'ones', fx:()=>{}});
     if(borrow){
       steps.push({say:S().subCant(oA,oB), col:'ones', fx:()=>fillOnes(oA,0)});
-      steps.push({say:S().subBorrow(tA,tA2,oA,oA2), col:'both', pulse:'bm', fx:()=>{borrowDown(); setTimeout(showBorrowMark,550);}});
+      steps.push({say:S().subBorrowIntent, col:'tens', pulse:'g2-tens', fx:()=>{}});
+      steps.push({say:S().subBorrowTens(tA,tA2), col:'tens', pulse:'bm', fx:()=>showBorrowMark()});
+      steps.push({say:S().subBorrowOnes(oA,oA2), col:'ones', fx:()=>borrowDown()});
       steps.push({say:S().subDoIt(oA2,oB,oRes), col:'ones', pulse:'out-ones', fx:()=>{removeOnes(oB); writeOut('ones',oRes);
         setTimeout(()=>{ hideLegend(); $('concreteLabel').textContent=S().concreteLeftover(oRes); }, oB*130+150); }});
     } else {
@@ -694,12 +700,22 @@ function showTensBarsAdd(carryCount, aTens, bTens){
 }
 function showTensBarsSub(tA2, tB, tRes){
   let bars='';
-  for(let i=0;i<tA2;i++) bars += `<div class="tenbarmini pop ${i>=tRes?'removedbar':''}" style="animation-delay:${i*60}ms"></div>`;
+  for(let i=0;i<tA2;i++) bars += `<div class="tenbarmini pop" data-i="${i}" style="animation-delay:${i*60}ms"></div>`;
   $('frames').innerHTML = `<div class="tenbars">${bars}</div>`;
   const lg=$('grouplegend');
   if(lg){ lg.style.display='flex';
     lg.innerHTML = `<span class="pill tensA">${tA2}</span><span class="plus">−</span><span class="pill tensB">${tB}</span>`; }
   $('concreteLabel').textContent = S().concreteTensSub(tA2,tB,tRes);
+  const barEls=[...document.querySelectorAll('#frames .tenbarmini')];
+  let removed=0;
+  setTimeout(()=>{
+    const iv=setInterval(()=>{
+      if(removed>=tB){ clearInterval(iv); return; }
+      const el=barEls[barEls.length-1-removed];
+      if(el) el.classList.add('removedbar');
+      removed++;
+    },180);
+  }, tA2*60+400);
 }
 function borrowDown(){
   $('frames').innerHTML = `<div class="tenwrap"><div class="tenbarv drop">10</div></div>`;
