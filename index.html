@@ -539,6 +539,10 @@ function renderConcrete(){
 
 /* ================= TRY mode ================= */
 let cellVals={};
+let autoNextTimer=null;
+function isLastSlot(slot){
+  return document.querySelector('#sum .ans[data-slot="tens"]') ? slot==='tens' : slot==='ones';
+}
 function selectCell(el){
   if(el.classList.contains('locked')){
     setSay(S().lockedHint);
@@ -554,6 +558,7 @@ function padPress(v){
   if(!el) return;
   el.classList.remove('ok','bad');
   if(v==='del'){ cellVals[state.sel]=''; el.textContent=''; return; }
+  const filledSlot=state.sel;
   cellVals[state.sel]=v; el.textContent=v;
   // auto-advance selection ones -> carry -> tens for nicer flow, unlocking as we go
   if(state.sel==='ones'){
@@ -563,6 +568,7 @@ function padPress(v){
     const tensEl=document.querySelector('#sum .ans[data-slot="tens"]');
     if(tensEl){ tensEl.classList.remove('locked'); selectCell(tensEl); }
   }
+  if(isLastSlot(filledSlot)) setTimeout(checkAnswer, 300);
 }
 function checkAnswer(){
   const ans=answer();
@@ -580,7 +586,8 @@ function checkAnswer(){
   if(allOk){
     setSay(S().okMsg(state.a,LESSONS[state.key].op,state.b,ans));
     celebrate(); $('btnCheck').disabled=true;
-    setTimeout(()=>{}, 10);
+    clearTimeout(autoNextTimer);
+    autoNextTimer=setTimeout(()=>{ if(state.mode==='try') newRound(); }, 5000);
   } else {
     // targeted hint
     if(isAdd && carryVal() && (parseInt(cellVals.carry||'-1'))!==1){
@@ -753,7 +760,7 @@ function beep(){ try{ actx=actx||new (window.AudioContext||window.webkitAudioCon
     g.gain.exponentialRampToValueAtTime(0.0001,t+0.18);o.start(t);o.stop(t+0.2);});}catch(e){} }
 
 /* ================= navigation ================= */
-function goHome(){ $('home').style.display='block'; $('board').classList.remove('show'); $('back').classList.remove('show'); }
+function goHome(){ clearTimeout(autoNextTimer); $('home').style.display='block'; $('board').classList.remove('show'); $('back').classList.remove('show'); }
 function openLesson(key){
   state.key=key; $('home').style.display='none'; $('board').classList.add('show'); $('back').classList.add('show');
   $('boardTitle').textContent=S().lessons[key].title;
@@ -761,6 +768,7 @@ function openLesson(key){
 }
 function newProblem(){ const {a,b}=makeProblem(state.key); state.a=a; state.b=b; state.sel=null; }
 function renderRound(){
+  clearTimeout(autoNextTimer);
   cellVals={};
   if(state.mode==='try'){ renderSum('try'); renderConcrete();
     setSay(S().tryStartSay); const bc=$('btnCheck'); if(bc) bc.disabled=false; }
