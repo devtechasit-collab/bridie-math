@@ -449,7 +449,7 @@ function renderSum(mode){
   const carryRow = `<div class="row">
       <div class="cell"></div>
       <div class="cell" data-col="tens" style="height:52px">${carryCell}</div>
-      <div class="cell" data-col="ones" style="height:52px"></div></div>`;
+      <div class="cell" style="height:52px"></div></div>`;
 
   const dTens=(n)=> n>=10 ? `<span class="digit tens">${tens(n)}</span>` : ``;
   const dOnes=(n)=> `<span class="digit ones">${ones(n)}</span>`;
