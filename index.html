@@ -619,7 +619,7 @@ function buildSteps(){
     steps.push({say:S().addStart, col:'ones', fx:()=>{}});
     steps.push({say:S().addOnes(oA,oB,oSum), col:'ones', fx:()=>{fillOnes(oA,oB); showLegend(oA,oB);}});
     if(c){
-      steps.push({say:S().addBundleWrite(oSum), col:'both', fx:()=>{bundleToBar(oSum); writeSixteen(oSum);}});
+      steps.push({say:S().addBundleWrite(oSum), col:'ones', fx:()=>{bundleToBar(oSum); writeSixteen(oSum);}});
       steps.push({say:S().addSplit(oSum), col:'ones', pulse:'cm-tens', fx:()=>splitCarry()});
     } else {
       steps.push({say:S().addNoCarry(oRes), col:'ones', pulse:'out-ones', fx:()=>{hideLegend(); writeOut('ones',oRes);}});
