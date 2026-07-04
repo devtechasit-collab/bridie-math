@@ -71,6 +71,7 @@
   .lesson.add .icon{background:var(--ones-soft);color:var(--ones)}
   .lesson.sub .icon{background:var(--tens-soft);color:var(--tens)}
   .lesson.mixed .icon{background:#F0E4FF;color:#8B5CF6}
+  .lesson.word .icon{background:#FFE4EC;color:#D6336C}
   .lesson .t{font-family:'Baloo Thai 2';font-weight:700;font-size:16px}
   .lesson .d{font-size:13px;color:var(--ink-soft);line-height:1.25}
   .lesson .tag{align-self:flex-start;font-size:12px;padding:3px 10px;border-radius:999px;font-family:'Baloo Thai 2';font-weight:700}
@@ -210,6 +211,33 @@
   .cell.focuscol.f-tens{background:var(--tens-soft);box-shadow:inset 0 0 0 2.5px var(--tens)}
   .focuscell{animation:cellpulse 1.1s ease-in-out infinite}
   @keyframes cellpulse{50%{transform:scale(1.14)}}
+  /* word problems: drag numbers from the story into the equation, pick the operator yourself */
+  .wordboard{display:none}
+  .wp-story{font-family:'Itim';font-size:19px;line-height:1.7;color:var(--ink);background:#FBFAF4;
+    border-radius:16px;padding:16px 18px;margin-bottom:16px}
+  .wp-num{display:inline-grid;place-items:center;min-width:30px;height:30px;padding:0 6px;border-radius:9px;
+    background:var(--carry-soft);color:#0d8f63;font-family:'Baloo Thai 2';font-weight:800;font-size:18px;
+    cursor:grab;touch-action:none;user-select:none;box-shadow:0 2px 0 rgba(0,0,0,.1);transition:opacity .2s,transform .2s}
+  .wp-num.used{opacity:.3;cursor:not-allowed;box-shadow:none}
+  .wp-num.dragging-source{opacity:.25}
+  .wp-dragclone{position:fixed;z-index:80;pointer-events:none;display:inline-grid;place-items:center;
+    min-width:30px;height:30px;padding:0 6px;border-radius:9px;background:var(--carry-soft);color:#0d8f63;
+    font-family:'Baloo Thai 2';font-weight:800;font-size:18px;box-shadow:0 6px 14px rgba(0,0,0,.25);transform:scale(1.15)}
+  .wp-equation{display:flex;align-items:center;justify-content:center;gap:10px;flex-wrap:wrap;margin-top:6px}
+  .wp-drop{width:58px;height:58px;border-radius:14px;border:3px dashed var(--line);background:#FBFAF4;
+    display:grid;place-items:center;font-family:'Baloo Thai 2';font-weight:800;font-size:30px;color:var(--ink-soft);
+    transition:all .15s}
+  .wp-drop.hover{border-color:var(--sun);background:#FFF8E4}
+  .wp-drop.filled{border-style:solid;border-color:var(--carry);color:var(--ink);background:var(--carry-soft)}
+  .wp-drop.ok{border-style:solid;border-color:var(--carry);background:var(--carry-soft)}
+  .wp-drop.bad{border-style:solid;border-color:var(--wrong);background:var(--wrong-soft);animation:shake .3s}
+  .wp-opgroup{display:flex;gap:6px}
+  .wp-opbtn{width:44px;height:44px;border-radius:12px;border:3px solid var(--line);background:#FBFAF4;
+    font-family:'Baloo Thai 2';font-weight:800;font-size:24px;color:var(--ink-soft);cursor:pointer}
+  .wp-opbtn.sel{border-style:solid;border-color:var(--sun);background:#FFF8E4;color:var(--ink)}
+  .wp-opbtn.ok{border-color:var(--carry);background:var(--carry-soft)}
+  .wp-opbtn.bad{border-color:var(--wrong);background:var(--wrong-soft);animation:shake .3s}
+  .wp-eq{font-family:'Baloo Thai 2';font-weight:800;font-size:28px;color:var(--ink-soft)}
   /* step bar */
   .stepbar{display:none;align-items:center;justify-content:center;gap:10px;margin:0 0 12px}
   .stepnum{font-family:'Baloo Thai 2';font-weight:800;font-size:14px;color:var(--ink);
@@ -289,12 +317,26 @@
       <span class="stepdots" id="stepDots"></span>
     </div>
 
-    <div class="stage">
+    <div class="stage" id="stageNormal">
       <div class="sum" id="sum"></div>
       <div class="concrete" id="concreteWrap">
         <div class="clabel" id="concreteLabel"></div>
         <div class="frames" id="frames"></div>
         <div class="grouplegend" id="grouplegend"></div>
+      </div>
+    </div>
+
+    <div class="stage wordboard" id="wordboard">
+      <div class="wp-story" id="wpStory"></div>
+      <div class="wp-equation">
+        <div class="wp-drop" id="wpSlot1" data-slot="num1">?</div>
+        <div class="wp-opgroup" id="wpOpGroup">
+          <button class="wp-opbtn" data-op="+">+</button>
+          <button class="wp-opbtn" data-op="−">−</button>
+        </div>
+        <div class="wp-drop" id="wpSlot2" data-slot="num2">?</div>
+        <span class="wp-eq">=</span>
+        <div class="ans wp-ans" id="wpAnswerBox">?</div>
       </div>
     </div>
 
@@ -319,9 +361,10 @@ const LESSONS = {
   sub2n: {op:'−', icon:'－', cls:'sub', tag:'easy'},
   sub2b: {op:'−', icon:'－', cls:'sub', tag:'hard'},
   mixed: {op:'+', icon:'🎲', cls:'mixed', tag:'hard'},
+  wordprob: {op:'+', icon:'📖', cls:'word', tag:'hard'},
 };
 
-let state = { key:null, mode:'try', lang:'th', a:0, b:0, op:'+', sel:null, watchSteps:[], watchIdx:0 };
+let state = { key:null, mode:'try', lang:'th', a:0, b:0, op:'+', tplIndex:0, sel:null, watchSteps:[], watchIdx:0 };
 
 /* ================= language strings ================= */
 const T = {
@@ -339,6 +382,7 @@ th:{
     sub2n:{title:`ลบ 2 หลัก (ไม่ยืม)`, desc:`48 − 25 ลบตรงๆ ไม่ต้องยืม`},
     sub2b:{title:`ลบ 2 หลัก (มียืม)`, desc:`32 − 15 หน่วยไม่พอ ต้องยืม`},
     mixed:{title:`โจทย์รวม (สุ่ม) 🎲`, desc:`เจอบวกหรือลบแบบไหนก็ได้ ท้าทายทุกอย่างที่เรียนมา`},
+    wordprob:{title:`โจทย์ปัญหา 📖`, desc:`อ่านเรื่อง ลากตัวเลขมาวาง แล้วเลือกเครื่องหมายเอง`},
   },
   concreteAdd:(a,b)=>`นับเม็ดหลักหน่วยที่ต้องบวกกัน: ${a} + ${b}`,
   concreteSub:`เม็ดส้ม = หลักหน่วยของตัวตั้ง  •  แท่งฟ้า = หลักสิบ`,
@@ -378,6 +422,21 @@ th:{
   subDoIt:(oA2,oB,oRes)=>`ลบได้แล้ว: <b>${oA2} − ${oB} = ${oRes}</b> → เขียน <span class="h-ones">${oRes}</span> ในช่องหน่วย`,
   subOnesPlain:(oA,oB,oRes)=>`หลักหน่วย: <span class="h-ones">${oA}</span> − <span class="h-ones">${oB}</span> = <b>${oRes}</b>  (เอา ${oB} เม็ดออก)`,
   subTens:(tA2,tB,tRes)=>`หลักสิบ: <span class="h-tens">${tA2}</span> − <span class="h-tens">${tB}</span> = <b>${tRes}</b>`,
+  wpStartSay:`ลากตัวเลขจากในโจทย์มาใส่ในช่อง แล้วเลือกเครื่องหมาย (+ หรือ −) ให้ถูกนะ`,
+  wpHintNums:`ลองอ่านโจทย์อีกทีนะ ตัวเลขที่ลากไปยังไม่ตรงกับโจทย์เลย`,
+  wpHintOp:`เครื่องหมายยังไม่ถูกนะ ลองคิดดูว่าโจทย์นี้ต้อง "รวมกัน" หรือ "เอาออก" กันแน่`,
+  wpHintAns:`ตัวเลขกับเครื่องหมายถูกแล้ว! ลองคิดคำตอบใหม่อีกทีนะ`,
+  wpOkMsg:(a,op,b,ans)=>`เก่งมาก! ${a} ${op} ${b} = ${ans} ถูกต้องเลย! 🎉`,
+  wordProblems:[
+    {op:'+', tpl:(a,b)=>`แม่ซื้อส้มมา <b class="wp-num" data-value="${a}">${a}</b> ผล พ่อซื้อมา <b class="wp-num" data-value="${b}">${b}</b> ผล พ่อและแม่มีส้มรวมกันกี่ผล`},
+    {op:'+', tpl:(a,b)=>`ในสวนมีนกอยู่ <b class="wp-num" data-value="${a}">${a}</b> ตัว บินมาเพิ่มอีก <b class="wp-num" data-value="${b}">${b}</b> ตัว ตอนนี้มีนกทั้งหมดกี่ตัว`},
+    {op:'+', tpl:(a,b)=>`น้องมีสติกเกอร์ <b class="wp-num" data-value="${a}">${a}</b> แผ่น พี่ให้มาอีก <b class="wp-num" data-value="${b}">${b}</b> แผ่น น้องมีสติกเกอร์ทั้งหมดกี่แผ่น`},
+    {op:'+', tpl:(a,b)=>`ห้องเรียนมีเด็กผู้ชาย <b class="wp-num" data-value="${a}">${a}</b> คน เด็กผู้หญิง <b class="wp-num" data-value="${b}">${b}</b> คน ห้องเรียนนี้มีเด็กทั้งหมดกี่คน`},
+    {op:'−', tpl:(a,b)=>`น้องมีลูกอม <b class="wp-num" data-value="${a}">${a}</b> เม็ด แจกให้เพื่อนไป <b class="wp-num" data-value="${b}">${b}</b> เม็ด น้องเหลือลูกอมกี่เม็ด`},
+    {op:'−', tpl:(a,b)=>`บนต้นไม้มีนก <b class="wp-num" data-value="${a}">${a}</b> ตัว บินหนีไป <b class="wp-num" data-value="${b}">${b}</b> ตัว เหลือนกบนต้นไม้กี่ตัว`},
+    {op:'−', tpl:(a,b)=>`พ่อมีเงิน <b class="wp-num" data-value="${a}">${a}</b> บาท ซื้อของไปใช้ <b class="wp-num" data-value="${b}">${b}</b> บาท พ่อเหลือเงินกี่บาท`},
+    {op:'−', tpl:(a,b)=>`ในตะกร้ามีไข่ <b class="wp-num" data-value="${a}">${a}</b> ฟอง แม่ทำแตกไป <b class="wp-num" data-value="${b}">${b}</b> ฟอง เหลือไข่กี่ฟอง`},
+  ],
 },
 en:{
   title:`Add & Subtract — See How Carrying Works`, brand:`Birdie Math`,
@@ -393,6 +452,7 @@ en:{
     sub2n:{title:`Subtract 2-digit (no borrow)`, desc:`48 − 25 — subtract straight across`},
     sub2b:{title:`Subtract 2-digit (borrow)`, desc:`32 − 15 — not enough ones, borrow!`},
     mixed:{title:`Mixed practice (random) 🎲`, desc:`Could be add or subtract — anything you've learned!`},
+    wordprob:{title:`Word problems 📖`, desc:`Read the story, drag the numbers, pick the sign yourself`},
   },
   concreteAdd:(a,b)=>`Count the ones to add: ${a} + ${b}`,
   concreteSub:`Orange = ones   •   Blue bar = tens`,
@@ -432,6 +492,21 @@ en:{
   subDoIt:(oA2,oB,oRes)=>`Now we can: <b>${oA2} − ${oB} = ${oRes}</b> → write <span class="h-ones">${oRes}</span> in the ones box.`,
   subOnesPlain:(oA,oB,oRes)=>`Ones: <span class="h-ones">${oA}</span> − <span class="h-ones">${oB}</span> = <b>${oRes}</b>  (take ${oB} dots away)`,
   subTens:(tA2,tB,tRes)=>`Tens: <span class="h-tens">${tA2}</span> − <span class="h-tens">${tB}</span> = <b>${tRes}</b>`,
+  wpStartSay:`Drag the numbers from the story into the boxes, then pick the right sign (+ or −).`,
+  wpHintNums:`Read the story again — the numbers you dragged don't match it yet.`,
+  wpHintOp:`The sign isn't right yet. Think about whether this story means "together" or "taking away".`,
+  wpHintAns:`The numbers and sign are right! Try working out the answer again.`,
+  wpOkMsg:(a,op,b,ans)=>`Great job! ${a} ${op} ${b} = ${ans} — that's right! 🎉`,
+  wordProblems:[
+    {op:'+', tpl:(a,b)=>`Mom bought <b class="wp-num" data-value="${a}">${a}</b> oranges. Dad bought <b class="wp-num" data-value="${b}">${b}</b> oranges. How many oranges do Mom and Dad have together?`},
+    {op:'+', tpl:(a,b)=>`There were <b class="wp-num" data-value="${a}">${a}</b> birds in the garden. <b class="wp-num" data-value="${b}">${b}</b> more flew in. How many birds are there now?`},
+    {op:'+', tpl:(a,b)=>`A kid has <b class="wp-num" data-value="${a}">${a}</b> stickers. Their sibling gives them <b class="wp-num" data-value="${b}">${b}</b> more. How many stickers do they have now?`},
+    {op:'+', tpl:(a,b)=>`A classroom has <b class="wp-num" data-value="${a}">${a}</b> boys and <b class="wp-num" data-value="${b}">${b}</b> girls. How many kids are in the classroom?`},
+    {op:'−', tpl:(a,b)=>`A kid has <b class="wp-num" data-value="${a}">${a}</b> candies. They give <b class="wp-num" data-value="${b}">${b}</b> to a friend. How many candies are left?`},
+    {op:'−', tpl:(a,b)=>`There were <b class="wp-num" data-value="${a}">${a}</b> birds on a tree. <b class="wp-num" data-value="${b}">${b}</b> flew away. How many birds are left on the tree?`},
+    {op:'−', tpl:(a,b)=>`Dad has <b class="wp-num" data-value="${a}">${a}</b> baht. He spends <b class="wp-num" data-value="${b}">${b}</b> baht on shopping. How much money does he have left?`},
+    {op:'−', tpl:(a,b)=>`There are <b class="wp-num" data-value="${a}">${a}</b> eggs in a basket. Mom breaks <b class="wp-num" data-value="${b}">${b}</b> of them. How many eggs are left?`},
+  ],
 },
 };
 function S(){ return T[state.lang]; }
@@ -444,6 +519,14 @@ function makeProblem(key){
   if(key==='mixed'){
     const subKeys=['add1','add2n','add2c','sub1','sub2n','sub2b'];
     return makeProblem(subKeys[rnd(0,subKeys.length-1)]);
+  }
+  if(key==='wordprob'){
+    const templates=S().wordProblems;
+    const tplIndex=rnd(0,templates.length-1);
+    const op=templates[tplIndex].op;
+    const subKeys = op==='+' ? ['add2n','add2c'] : ['sub2n','sub2b'];
+    const r=makeProblem(subKeys[rnd(0,subKeys.length-1)]);
+    return {a:r.a,b:r.b,op,tplIndex};
   }
   const op=LESSONS[key].op;
   let a,b,g=0;
@@ -606,6 +689,7 @@ function selectCell(el){
   el.classList.add('sel'); state.sel=el.dataset.slot;
 }
 function padPress(v){
+  if(state.key==='wordprob'){ wordPadPress(v); return; }
   if(!state.sel) return;
   const el=document.querySelector(`#sum .ans[data-slot="${state.sel}"]`);
   if(!el) return;
@@ -665,6 +749,98 @@ function checkAnswer(){
     }
     clearTimeout(autoClearTimer);
     autoClearTimer=setTimeout(()=>{ if(state.mode==='try') resetAnswerForm(); }, 2000);
+  }
+}
+
+/* ================= WORD PROBLEMS (drag numbers, pick the sign) ================= */
+let wp={answer:'',chosenOp:null};
+function renderWordRound(){
+  const tpl=S().wordProblems[state.tplIndex];
+  $('wpStory').innerHTML=tpl.tpl(state.a,state.b);
+  wp={answer:'',chosenOp:null};
+  const s1=$('wpSlot1'), s2=$('wpSlot2'), ab=$('wpAnswerBox');
+  s1.className='wp-drop'; s1.textContent='?'; delete s1.dataset.value;
+  s2.className='wp-drop'; s2.textContent='?'; delete s2.dataset.value;
+  ab.className='ans wp-ans'; ab.textContent='?';
+  document.querySelectorAll('.wp-opbtn').forEach(b=>{ b.className='wp-opbtn'; b.onclick=()=>wpChooseOp(b); });
+  document.querySelectorAll('#wpStory .wp-num').forEach(el=>{
+    el.classList.remove('used','dragging-source');
+    el.onpointerdown=(e)=>wpStartDrag(e, el);
+  });
+  setSay(S().wpStartSay);
+}
+function wpChooseOp(btn){
+  document.querySelectorAll('.wp-opbtn').forEach(b=>b.classList.remove('sel','ok','bad'));
+  btn.classList.add('sel');
+  wp.chosenOp=btn.dataset.op;
+}
+function wpStartDrag(e, el){
+  if(el.classList.contains('used')) return;
+  e.preventDefault();
+  const value=el.dataset.value;
+  const rect=el.getBoundingClientRect();
+  const clone=document.createElement('div');
+  clone.className='wp-dragclone'; clone.textContent=value;
+  clone.style.left=rect.left+'px'; clone.style.top=rect.top+'px';
+  document.body.appendChild(clone);
+  el.classList.add('dragging-source');
+  const move=(ev)=>{
+    clone.style.left=(ev.clientX-rect.width/2)+'px';
+    clone.style.top=(ev.clientY-rect.height/2)+'px';
+    document.querySelectorAll('.wp-drop').forEach(d=>d.classList.remove('hover'));
+    const target=document.elementFromPoint(ev.clientX,ev.clientY);
+    const drop=target&&target.closest('.wp-drop');
+    if(drop&&!drop.classList.contains('filled')) drop.classList.add('hover');
+  };
+  const up=(ev)=>{
+    document.removeEventListener('pointermove',move);
+    document.removeEventListener('pointerup',up);
+    clone.remove();
+    el.classList.remove('dragging-source');
+    document.querySelectorAll('.wp-drop').forEach(d=>d.classList.remove('hover'));
+    const target=document.elementFromPoint(ev.clientX,ev.clientY);
+    const drop=target&&target.closest('.wp-drop');
+    if(drop&&!drop.classList.contains('filled')){
+      drop.textContent=value; drop.dataset.value=value; drop.classList.add('filled');
+      el.classList.add('used');
+    }
+  };
+  document.addEventListener('pointermove',move);
+  document.addEventListener('pointerup',up);
+}
+function wordPadPress(v){
+  const ab=$('wpAnswerBox');
+  ab.classList.remove('ok','bad');
+  if(v==='del'){ wp.answer=''; ab.textContent='?'; return; }
+  wp.answer=(wp.answer||'')+v; if(wp.answer.length>3) wp.answer=wp.answer.slice(-3);
+  ab.textContent=wp.answer;
+  const trueAns=state.op==='+' ? state.a+state.b : state.a-state.b;
+  if(wp.answer.length>=String(trueAns).length) setTimeout(checkWordAnswer,300);
+}
+function checkWordAnswer(){
+  const trueAns=state.op==='+' ? state.a+state.b : state.a-state.b;
+  const s1=$('wpSlot1'), s2=$('wpSlot2');
+  const v1=parseInt(s1.dataset.value), v2=parseInt(s2.dataset.value);
+  const numsOk=(v1===state.a&&v2===state.b)||(state.op==='+'&&v1===state.b&&v2===state.a);
+  const opOk=wp.chosenOp===state.op;
+  const ansOk=parseInt(wp.answer)===trueAns;
+  const mark=(el,ok)=>{ el.classList.remove('ok','bad'); el.classList.add(ok?'ok':'bad'); };
+  mark(s1,numsOk); mark(s2,numsOk);
+  const opBtn=document.querySelector(`.wp-opbtn[data-op="${wp.chosenOp||''}"]`);
+  if(opBtn) mark(opBtn,opOk);
+  mark($('wpAnswerBox'),ansOk);
+
+  if(numsOk&&opOk&&ansOk){
+    setSay(S().wpOkMsg(state.a,state.op,state.b,trueAns));
+    celebrate();
+    clearTimeout(autoNextTimer);
+    autoNextTimer=setTimeout(()=>{ newRound(); }, 3000);
+  } else {
+    if(!numsOk) setSay(S().wpHintNums);
+    else if(!opOk) setSay(S().wpHintOp);
+    else setSay(S().wpHintAns);
+    clearTimeout(autoClearTimer);
+    autoClearTimer=setTimeout(()=>{ renderWordRound(); }, 2000);
   }
 }
 
@@ -877,13 +1053,18 @@ function goHome(){ clearTimeout(autoNextTimer); clearTimeout(autoClearTimer); $(
 function openLesson(key){
   state.key=key; $('home').style.display='none'; $('board').classList.add('show'); $('back').classList.add('show');
   $('boardTitle').textContent=S().lessons[key].title;
+  document.querySelector('.modeswitch').style.display = key==='wordprob' ? 'none' : 'flex';
   setMode('try');
 }
-function newProblem(){ const {a,b,op}=makeProblem(state.key); state.a=a; state.b=b; state.op=op; state.sel=null; }
+function newProblem(){ const {a,b,op,tplIndex}=makeProblem(state.key); state.a=a; state.b=b; state.op=op; state.tplIndex=tplIndex; state.sel=null; }
 function renderRound(){
   clearTimeout(autoNextTimer);
   clearTimeout(autoClearTimer);
   cellVals={};
+  const isWP = state.key==='wordprob';
+  $('stageNormal').style.display = isWP ? 'none' : '';
+  $('wordboard').style.display = isWP ? 'block' : 'none';
+  if(isWP){ renderWordRound(); return; }
   if(state.mode==='try'){ renderSum('try'); $('concreteWrap').style.display='none';
     const hasBorrowBox = !!document.querySelector('#sum .ans[data-slot="borrowTens"]');
     setSay(hasBorrowBox ? S().tryStartSayBorrow : S().tryStartSay);
@@ -895,6 +1076,7 @@ function renderRound(){
 function newRound(){ newProblem(); renderRound(); }
 function renderControls(){
   const s=S();
+  if(state.key==='wordprob'){ $('controls').innerHTML=''; return; }
   if(state.mode==='try'){
     $('controls').innerHTML=`
       <button class="btn sun" id="btnHelp">${s.helpBtn}</button>
