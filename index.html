@@ -291,7 +291,7 @@
 
     <div class="stage">
       <div class="sum" id="sum"></div>
-      <div class="concrete">
+      <div class="concrete" id="concreteWrap">
         <div class="clabel" id="concreteLabel"></div>
         <div class="frames" id="frames"></div>
         <div class="grouplegend" id="grouplegend"></div>
@@ -884,11 +884,11 @@ function renderRound(){
   clearTimeout(autoNextTimer);
   clearTimeout(autoClearTimer);
   cellVals={};
-  if(state.mode==='try'){ renderSum('try'); renderConcrete();
+  if(state.mode==='try'){ renderSum('try'); $('concreteWrap').style.display='none';
     const hasBorrowBox = !!document.querySelector('#sum .ans[data-slot="borrowTens"]');
     setSay(hasBorrowBox ? S().tryStartSayBorrow : S().tryStartSay);
     const bc=$('btnCheck'); if(bc) bc.disabled=false; }
-  else { renderSum('watch'); renderConcrete(); state.watchSteps=buildSteps(); state.watchIdx=0;
+  else { renderSum('watch'); $('concreteWrap').style.display=''; renderConcrete(); state.watchSteps=buildSteps(); state.watchIdx=0;
     clearFocus(); renderStepbar(0,state.watchSteps.length);
     setSay(S().watchStartSay); updateWatchBtn(); }
 }
