@@ -185,19 +185,23 @@
   .grouplegend .pill.tensA{background:var(--tens)}
   .grouplegend .pill.tensB{background:var(--tens-b);color:#1F4E8C}
   /* subtraction zones: tens = blue "10" dots, ones = orange unit dots, side by side from the start */
-  .subzones{display:flex;justify-content:center;align-items:flex-start;gap:26px;flex-wrap:wrap;margin:2px 0}
-  .subzone{display:flex;flex-direction:column;align-items:center;gap:8px}
-  .subzone .zonedots{display:flex;gap:6px;flex-wrap:wrap;justify-content:center;max-width:150px}
-  .subzone .zonelabel{font-family:'Baloo Thai 2';font-weight:700;font-size:12px;color:var(--ink-soft)}
-  .tendot{width:42px;height:42px;border-radius:50%;display:grid;place-items:center;color:#fff;
-    font-family:'Baloo Thai 2';font-weight:800;font-size:14px;background:linear-gradient(180deg,#5B9BE8,#2F6FC4);
+  .subzones{display:flex;justify-content:center;align-items:flex-start;gap:12px;flex-wrap:nowrap}
+  .subzone{display:flex;flex-direction:column;align-items:center;gap:8px;flex:1;min-width:0}
+  .subzone .zonedots{display:flex;gap:5px;flex-wrap:wrap;justify-content:center}
+  .subzone .zonelabel{font-family:'Baloo Thai 2';font-weight:700;font-size:11px;color:var(--ink-soft);text-align:center}
+  /* the borrowed ten stays one visible bundle, kept apart from the loose ones dots */
+  .onesgroups{display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:center}
+  .onesgroups .extras{max-width:60px}
+  .tenbundle{padding:5px;border-radius:14px;border:2px dashed var(--ones-b);background:rgba(255,201,138,.15)}
+  .tendot{width:34px;height:34px;border-radius:50%;display:grid;place-items:center;color:#fff;
+    font-family:'Baloo Thai 2';font-weight:800;font-size:12px;background:linear-gradient(180deg,#5B9BE8,#2F6FC4);
     box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.35),0 3px 0 #1F4E8C;transition:opacity .35s,transform .35s}
   .tendot.pop{animation:popin .4s cubic-bezier(.2,1.5,.4,1) both}
   .tendot.pulsing{animation:pulse .6s ease infinite}
   .tendot.spent{opacity:0;transform:scale(.3)}
   .tendot.flying{position:fixed;z-index:60;pointer-events:none;transition:none}
   /* small badge in front of the ones digit showing the ten that just arrived, matches the borrowed dots' shade */
-  .onesborrowmark{position:absolute;top:-14px;left:-10px;font-family:'Baloo Thai 2';font-weight:800;font-size:19px;
+  .onesborrowmark{position:absolute;top:4px;left:4px;font-family:'Baloo Thai 2';font-weight:800;font-size:19px;
     color:#7A4A12;background:var(--ones-b);width:26px;height:26px;border-radius:50%;display:grid;place-items:center;
     box-shadow:0 2px 5px rgba(0,0,0,.18);opacity:0;transform:scale(.4);transition:all .35s cubic-bezier(.2,1.4,.4,1)}
   .onesborrowmark.show{opacity:1;transform:scale(1)}
@@ -558,7 +562,7 @@ function renderConcrete(){
     $('concreteLabel').textContent = S().concreteAdd(ones(A),ones(B));
   } else if(state.key==='sub2b'){
     hideLegend();
-    renderBorrowZones(tens(A), ones(A), null);
+    renderBorrowZones(tens(A), ones(A), false);
     $('concreteLabel').textContent = S().concreteSubZones(tens(A),ones(A));
   } else {
     hideLegend();
@@ -672,7 +676,7 @@ function buildSteps(){
       steps.push({say:S().subBorrow(tA,tA2,oA,oA2), col:'both', fx:()=>{
         showBorrowMark(); showOnesBorrowMark();
         flyTenDotToOnes(()=>{
-          renderBorrowZones(tA2, oA+10, oA);
+          renderBorrowZones(tA2, oA, true);
           showLegend(oA,10);
           $('concreteLabel').textContent = S().concreteBorrowed(oA+10);
         });
@@ -749,10 +753,11 @@ function showTensBarsSub(tA2, tB, tRes){
     },180);
   }, tA2*60+400);
 }
-function renderBorrowZones(tCount, oTotal, oSplit){
+function renderBorrowZones(tCount, oOriginal, borrowed){
   let tensDots=''; for(let i=0;i<tCount;i++) tensDots+=`<div class="tendot pop" id="tendot-${i}" style="animation-delay:${i*70}ms">10</div>`;
-  const onesExtra = oTotal>10 ? oTotal-10 : 0;
-  const onesHTML = frameHTML(Math.min(oTotal,10), oSplit) + (onesExtra?extrasHTML(onesExtra, oSplit!=null, oSplit!=null?'groupB':''):'');
+  const onesHTML = borrowed
+    ? `<div class="onesgroups">${oOriginal>0?extrasHTML(oOriginal,false,''):''}<div class="tenbundle">${frameHTML(10,0)}</div></div>`
+    : frameHTML(Math.min(oOriginal,10)) + (oOriginal>10?extrasHTML(oOriginal-10):'');
   $('frames').innerHTML = `<div class="subzones">
       <div class="subzone"><div class="zonelabel">${S().zoneTensLabel}</div><div class="zonedots" id="tenzone">${tensDots}</div></div>
       <div class="subzone"><div class="zonelabel">${S().zoneOnesLabel}</div><div id="onesZoneWrap">${onesHTML}</div></div>
