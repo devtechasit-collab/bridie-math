@@ -197,10 +197,12 @@
   .tendot.pulsing{animation:pulse .6s ease infinite}
   .tendot.spent{opacity:0;transform:scale(.3)}
   .tendot.flying{position:fixed;z-index:60;pointer-events:none;transition:none}
-  /* green digit in front of the ones digit, same baseline, kept fully inside the ones box so it never overlaps the tens box */
-  .onesborrowmark{position:absolute;top:50%;left:3px;font-family:'Baloo Thai 2';font-weight:800;font-size:24px;
-    color:var(--carry);opacity:0;transform:translateY(-50%) scale(.5);transition:all .35s cubic-bezier(.2,1.4,.4,1)}
-  .onesborrowmark.show{opacity:1;transform:translateY(-50%) scale(1)}
+  /* green digit in front of the ones digit, same size, grows in from zero width so it stays inside the ones box */
+  .borrowjoin{display:inline-flex;align-items:center;justify-content:center}
+  .digit.ones.borrowbadge{display:inline-block;width:0;overflow:hidden;opacity:0;color:var(--carry);
+    font-size:36px;transition:width .35s cubic-bezier(.2,1.4,.4,1),opacity .35s ease}
+  .digit.ones.borrowbadge.show{width:.62em;opacity:1}
+  .borrowjoin.revealed .digit.ones:not(.borrowbadge){font-size:36px;transition:font-size .35s ease}
   /* column focus highlight (watch mode) */
   .sum .cell[data-col]{border-radius:12px;transition:background .25s,box-shadow .25s}
   .cell.focuscol.f-ones{background:var(--ones-soft);box-shadow:inset 0 0 0 2.5px var(--ones)}
@@ -484,7 +486,7 @@ function renderSum(mode){
   // borrow visuals baked into A row for sub
   let aTensInner = A>=10 ? `<span class="digit tens" id="a-tens">${tens(A)}</span>
         <span class="strike" id="strk-tens"></span>` : ``;
-  const aOnesInner = isAdd ? dOnes(A) : `<span class="digit ones" id="a-ones">${ones(A)}</span><span class="onesborrowmark" id="obm">1</span>`;
+  const aOnesInner = isAdd ? dOnes(A) : `<span class="borrowjoin" id="onesJoin"><span class="digit ones borrowbadge" id="obm">1</span><span class="digit ones" id="a-ones">${ones(A)}</span></span>`;
   const rowA = `<div class="row">
       <div class="cell"></div>
       <div class="cell" data-col="tens" id="g2-tens">${isAdd?dTens(A):aTensInner}</div>
@@ -784,7 +786,10 @@ function showBorrowMark(){
   const s=$('strk-tens'); if(s) s.classList.add('show');
   const cm=$('cm-tens-sub'); if(cm){ cm.textContent = tens(state.a)-1; cm.classList.add('show'); }
 }
-function showOnesBorrowMark(){ const m=$('obm'); if(m) m.classList.add('show'); }
+function showOnesBorrowMark(){
+  const m=$('obm'); if(m) m.classList.add('show');
+  const j=$('onesJoin'); if(j) j.classList.add('revealed');
+}
 function removeOnes(count){
   const fills=[...document.querySelectorAll('.slot.fill')];
   let removed=0;
