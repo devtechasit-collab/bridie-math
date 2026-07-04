@@ -70,6 +70,7 @@
     font-family:'Baloo Thai 2';font-weight:800;font-size:26px;line-height:1}
   .lesson.add .icon{background:var(--ones-soft);color:var(--ones)}
   .lesson.sub .icon{background:var(--tens-soft);color:var(--tens)}
+  .lesson.mixed .icon{background:#F0E4FF;color:#8B5CF6}
   .lesson .t{font-family:'Baloo Thai 2';font-weight:700;font-size:16px}
   .lesson .d{font-size:13px;color:var(--ink-soft);line-height:1.25}
   .lesson .tag{align-self:flex-start;font-size:12px;padding:3px 10px;border-radius:999px;font-family:'Baloo Thai 2';font-weight:700}
@@ -317,9 +318,10 @@ const LESSONS = {
   sub1:  {op:'−', icon:'－', cls:'sub', tag:'easy'},
   sub2n: {op:'−', icon:'－', cls:'sub', tag:'easy'},
   sub2b: {op:'−', icon:'－', cls:'sub', tag:'hard'},
+  mixed: {op:'+', icon:'🎲', cls:'mixed', tag:'hard'},
 };
 
-let state = { key:null, mode:'try', lang:'th', a:0, b:0, sel:null, watchSteps:[], watchIdx:0 };
+let state = { key:null, mode:'try', lang:'th', a:0, b:0, op:'+', sel:null, watchSteps:[], watchIdx:0 };
 
 /* ================= language strings ================= */
 const T = {
@@ -336,6 +338,7 @@ th:{
     sub1:{title:`ลบเลข 1 หลัก`, desc:`8 − 3 = ? ลบง่ายๆ`},
     sub2n:{title:`ลบ 2 หลัก (ไม่ยืม)`, desc:`48 − 25 ลบตรงๆ ไม่ต้องยืม`},
     sub2b:{title:`ลบ 2 หลัก (มียืม)`, desc:`32 − 15 หน่วยไม่พอ ต้องยืม`},
+    mixed:{title:`โจทย์รวม (สุ่ม) 🎲`, desc:`เจอบวกหรือลบแบบไหนก็ได้ ท้าทายทุกอย่างที่เรียนมา`},
   },
   concreteAdd:(a,b)=>`นับเม็ดหลักหน่วยที่ต้องบวกกัน: ${a} + ${b}`,
   concreteSub:`เม็ดส้ม = หลักหน่วยของตัวตั้ง  •  แท่งฟ้า = หลักสิบ`,
@@ -389,6 +392,7 @@ en:{
     sub1:{title:`Subtract 1-digit`, desc:`8 − 3 = ? Easy take-away`},
     sub2n:{title:`Subtract 2-digit (no borrow)`, desc:`48 − 25 — subtract straight across`},
     sub2b:{title:`Subtract 2-digit (borrow)`, desc:`32 − 15 — not enough ones, borrow!`},
+    mixed:{title:`Mixed practice (random) 🎲`, desc:`Could be add or subtract — anything you've learned!`},
   },
   concreteAdd:(a,b)=>`Count the ones to add: ${a} + ${b}`,
   concreteSub:`Orange = ones   •   Blue bar = tens`,
@@ -437,22 +441,27 @@ const rnd=(lo,hi)=>Math.floor(Math.random()*(hi-lo+1))+lo;
 const ones=n=>n%10, tens=n=>Math.floor(n/10);
 
 function makeProblem(key){
+  if(key==='mixed'){
+    const subKeys=['add1','add2n','add2c','sub1','sub2n','sub2b'];
+    return makeProblem(subKeys[rnd(0,subKeys.length-1)]);
+  }
+  const op=LESSONS[key].op;
   let a,b,g=0;
   while(g++<400){
-    if(key==='add1'){ a=rnd(2,9); b=rnd(2,9); return {a,b}; }
-    if(key==='add2n'){ a=rnd(11,52); b=rnd(11,46); if(ones(a)+ones(b)<10 && tens(a)+tens(b)<10) return{a,b}; }
-    if(key==='add2c'){ a=rnd(14,58); b=rnd(15,39); if(ones(a)+ones(b)>=10 && tens(a)+tens(b)+1<=9) return{a,b}; }
-    if(key==='sub1'){ a=rnd(4,9); b=rnd(1,a); return {a,b}; }
-    if(key==='sub2n'){ a=rnd(35,99); b=rnd(11,a-10); if(ones(a)>=ones(b) && tens(a)>=tens(b)) return{a,b}; }
-    if(key==='sub2b'){ a=rnd(22,95); b=rnd(13,a-8); if(ones(a)<ones(b) && tens(a)>tens(b)) return{a,b}; }
+    if(key==='add1'){ a=rnd(2,9); b=rnd(2,9); return {a,b,op}; }
+    if(key==='add2n'){ a=rnd(11,52); b=rnd(11,46); if(ones(a)+ones(b)<10 && tens(a)+tens(b)<10) return{a,b,op}; }
+    if(key==='add2c'){ a=rnd(14,58); b=rnd(15,39); if(ones(a)+ones(b)>=10 && tens(a)+tens(b)+1<=9) return{a,b,op}; }
+    if(key==='sub1'){ a=rnd(4,9); b=rnd(1,a); return {a,b,op}; }
+    if(key==='sub2n'){ a=rnd(35,99); b=rnd(11,a-10); if(ones(a)>=ones(b) && tens(a)>=tens(b)) return{a,b,op}; }
+    if(key==='sub2b'){ a=rnd(22,95); b=rnd(13,a-8); if(ones(a)<ones(b) && tens(a)>tens(b)) return{a,b,op}; }
   }
-  return {a:27,b:15};
+  return {a:27,b:15,op};
 }
 
 /* ================= board render ================= */
 const $=id=>document.getElementById(id);
 
-function answer(){ return LESSONS[state.key].op==='+' ? state.a+state.b : state.a-state.b; }
+function answer(){ return state.op==='+' ? state.a+state.b : state.a-state.b; }
 function carryVal(){ // for add
   return ones(state.a)+ones(state.b)>=10 ? 1 : 0;
 }
@@ -461,7 +470,7 @@ function borrowNeeded(){ // for sub
 }
 
 function renderSum(mode){
-  const op = LESSONS[state.key].op;
+  const op = state.op;
   const A=state.a, B=state.b, ans=answer();
   const isAdd = op==='+';
   const showTens = A>=10 || B>=10 || ans>=10;
@@ -558,12 +567,12 @@ function showLegend(a,b){ const lg=$('grouplegend'); if(!lg) return; lg.style.di
 function hideLegend(){ const lg=$('grouplegend'); if(lg) lg.style.display='none'; }
 
 function renderConcrete(){
-  const A=state.a, B=state.b, isAdd=LESSONS[state.key].op==='+';
+  const A=state.a, B=state.b, isAdd=state.op==='+';
   if(isAdd){
     showOnesFrame(ones(A)+ones(B), ones(A));
     showLegend(ones(A), ones(B));
     $('concreteLabel').textContent = S().concreteAdd(ones(A),ones(B));
-  } else if(state.key==='sub2b'){
+  } else if(borrowNeeded()){
     hideLegend();
     renderBorrowZones(tens(A), ones(A), false);
     $('concreteLabel').textContent = S().concreteSubZones(tens(A),ones(A));
@@ -630,7 +639,7 @@ function padPress(v){
 function checkAnswer(){
   const ans=answer();
   const wantOnes=ones(ans), wantTens=tens(ans);
-  const isAdd=LESSONS[state.key].op==='+';
+  const isAdd=state.op==='+';
   let allOk=true;
   const io=$('in-ones'), it=$('in-tens'), ic=$('in-carry');
   const mark=(el,ok,soft)=>{ if(!el)return; el.classList.remove('ok','bad','sel'); el.classList.add(ok?'ok':'bad'); if(!ok&&!soft)allOk=false; };
@@ -641,7 +650,7 @@ function checkAnswer(){
   if(ic && cellVals.carry) mark(ic, parseInt(cellVals.carry)===carryVal(), true);
 
   if(allOk){
-    setSay(S().okMsg(state.a,LESSONS[state.key].op,state.b,ans));
+    setSay(S().okMsg(state.a,state.op,state.b,ans));
     celebrate(); $('btnCheck').disabled=true;
     clearTimeout(autoNextTimer);
     autoNextTimer=setTimeout(()=>{ if(state.mode==='try') newRound(); }, 3000);
@@ -661,7 +670,7 @@ function checkAnswer(){
 
 /* ================= WATCH mode (guided steps) ================= */
 function buildSteps(){
-  const op=LESSONS[state.key].op, A=state.a, B=state.b, ans=answer();
+  const op=state.op, A=state.a, B=state.b, ans=answer();
   const steps=[];
   const oA=ones(A),oB=ones(B),tA=tens(A),tB=tens(B);
 
@@ -870,7 +879,7 @@ function openLesson(key){
   $('boardTitle').textContent=S().lessons[key].title;
   setMode('try');
 }
-function newProblem(){ const {a,b}=makeProblem(state.key); state.a=a; state.b=b; state.sel=null; }
+function newProblem(){ const {a,b,op}=makeProblem(state.key); state.a=a; state.b=b; state.op=op; state.sel=null; }
 function renderRound(){
   clearTimeout(autoNextTimer);
   clearTimeout(autoClearTimer);
