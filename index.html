@@ -184,6 +184,23 @@
   .grouplegend .pill.carry{background:var(--carry)}
   .grouplegend .pill.tensA{background:var(--tens)}
   .grouplegend .pill.tensB{background:var(--tens-b);color:#1F4E8C}
+  /* subtraction zones: tens = blue "10" dots, ones = orange unit dots, side by side from the start */
+  .subzones{display:flex;justify-content:center;align-items:flex-start;gap:26px;flex-wrap:wrap;margin:2px 0}
+  .subzone{display:flex;flex-direction:column;align-items:center;gap:8px}
+  .subzone .zonedots{display:flex;gap:6px;flex-wrap:wrap;justify-content:center;max-width:150px}
+  .subzone .zonelabel{font-family:'Baloo Thai 2';font-weight:700;font-size:12px;color:var(--ink-soft)}
+  .tendot{width:42px;height:42px;border-radius:50%;display:grid;place-items:center;color:#fff;
+    font-family:'Baloo Thai 2';font-weight:800;font-size:14px;background:linear-gradient(180deg,#5B9BE8,#2F6FC4);
+    box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.35),0 3px 0 #1F4E8C;transition:opacity .35s,transform .35s}
+  .tendot.pop{animation:popin .4s cubic-bezier(.2,1.5,.4,1) both}
+  .tendot.pulsing{animation:pulse .6s ease infinite}
+  .tendot.spent{opacity:0;transform:scale(.3)}
+  .tendot.flying{position:fixed;z-index:60;pointer-events:none;transition:none}
+  /* small badge in front of the ones digit showing the ten that just arrived, matches the borrowed dots' shade */
+  .onesborrowmark{position:absolute;top:-14px;left:-10px;font-family:'Baloo Thai 2';font-weight:800;font-size:19px;
+    color:#7A4A12;background:var(--ones-b);width:26px;height:26px;border-radius:50%;display:grid;place-items:center;
+    box-shadow:0 2px 5px rgba(0,0,0,.18);opacity:0;transform:scale(.4);transition:all .35s cubic-bezier(.2,1.4,.4,1)}
+  .onesborrowmark.show{opacity:1;transform:scale(1)}
   /* column focus highlight (watch mode) */
   .sum .cell[data-col]{border-radius:12px;transition:background .25s,box-shadow .25s}
   .cell.focuscol.f-ones{background:var(--ones-soft);box-shadow:inset 0 0 0 2.5px var(--ones)}
@@ -348,8 +365,10 @@ th:{
   subStart:`มาลบกัน! เริ่มจาก <b>หลักหน่วยก่อน</b> เหมือนเดิม`,
   subCant:(oA,oB)=>`หลักหน่วย: <span class="h-ones">${oA}</span> − <span class="h-ones">${oB}</span> ... เอ๊ะ <b>${oA} น้อยกว่า ${oB}</b> ลบไม่ได้!`,
   subBorrowIntent:`ไม่พอ! ต้อง <b>ยืมจากหลักสิบ 1 แท่ง</b> มาช่วย`,
-  subBorrowTens:(tA,tA2)=>`หลักสิบจาก <span class="h-tens">${tA}</span> เหลือ <span class="h-tens">${tA2}</span> (ยืมไป 1 แท่ง)`,
-  subBorrowOnes:(oA,oA2)=>`แตกแท่งนั้นเป็น <b>10 หน่วย</b>  ตอนนี้หลักหน่วยมี <b>${oA}+10 = ${oA2}</b> เม็ด`,
+  subBorrow:(tA,tA2,oA,oA2)=>`ยืม 1 แท่งจากหลักสิบ (จาก <span class="h-tens">${tA}</span> เหลือ <span class="h-tens">${tA2}</span>)  มาแตกเป็น 10 หน่วย  หลักหน่วยมี <b>${oA}+10 = ${oA2}</b> เม็ด`,
+  zoneTensLabel:`หลักสิบ (แท่งฟ้า = 10)`,
+  zoneOnesLabel:`หลักหน่วย`,
+  concreteSubZones:(tA,oA)=>`มีแท่งฟ้า ${tA} แท่งที่หลักสิบ และ ${oA} เม็ดที่หลักหน่วย`,
   subDoIt:(oA2,oB,oRes)=>`ลบได้แล้ว: <b>${oA2} − ${oB} = ${oRes}</b> → เขียน <span class="h-ones">${oRes}</span> ในช่องหน่วย`,
   subOnesPlain:(oA,oB,oRes)=>`หลักหน่วย: <span class="h-ones">${oA}</span> − <span class="h-ones">${oB}</span> = <b>${oRes}</b>  (เอา ${oB} เม็ดออก)`,
   subTens:(tA2,tB,tRes)=>`หลักสิบ: <span class="h-tens">${tA2}</span> − <span class="h-tens">${tB}</span> = <b>${tRes}</b>`,
@@ -398,8 +417,10 @@ en:{
   subStart:`Let's subtract! Start with the <b>ones</b>, same as before.`,
   subCant:(oA,oB)=>`Ones: <span class="h-ones">${oA}</span> − <span class="h-ones">${oB}</span> ... uh oh, <b>${oA} is less than ${oB}</b>. We can't!`,
   subBorrowIntent:`Not enough! We need to <b>borrow 1 bar from the tens</b>.`,
-  subBorrowTens:(tA,tA2)=>`The tens go from <span class="h-tens">${tA}</span> down to <span class="h-tens">${tA2}</span> (lent 1 bar).`,
-  subBorrowOnes:(oA,oA2)=>`Break that bar into <b>10 ones</b>.  Now the ones have <b>${oA}+10 = ${oA2}</b> dots.`,
+  subBorrow:(tA,tA2,oA,oA2)=>`Borrow 1 bar from the tens (from <span class="h-tens">${tA}</span> down to <span class="h-tens">${tA2}</span>)  and break it into 10 ones.  Now the ones have <b>${oA}+10 = ${oA2}</b> dots.`,
+  zoneTensLabel:`Tens (blue bar = 10)`,
+  zoneOnesLabel:`Ones`,
+  concreteSubZones:(tA,oA)=>`There are ${tA} tens bars, and ${oA} dots at the ones.`,
   subDoIt:(oA2,oB,oRes)=>`Now we can: <b>${oA2} − ${oB} = ${oRes}</b> → write <span class="h-ones">${oRes}</span> in the ones box.`,
   subOnesPlain:(oA,oB,oRes)=>`Ones: <span class="h-ones">${oA}</span> − <span class="h-ones">${oB}</span> = <b>${oRes}</b>  (take ${oB} dots away)`,
   subTens:(tA2,tB,tRes)=>`Tens: <span class="h-tens">${tA2}</span> − <span class="h-tens">${tB}</span> = <b>${tRes}</b>`,
@@ -462,10 +483,11 @@ function renderSum(mode){
   let aTensInner = A>=10 ? `<span class="digit tens" id="a-tens">${tens(A)}</span>
         <span class="borrowmark" id="bm">${tens(A)-1}</span>
         <span class="strike" id="strk-tens"></span>` : ``;
+  const aOnesInner = isAdd ? dOnes(A) : `<span class="digit ones" id="a-ones">${ones(A)}</span><span class="onesborrowmark" id="obm">1</span>`;
   const rowA = `<div class="row">
       <div class="cell"></div>
       <div class="cell" data-col="tens" id="g2-tens">${isAdd?dTens(A):aTensInner}</div>
-      <div class="cell" data-col="ones" id="g2-ones">${isAdd?dOnes(A):`<span class="digit ones" id="a-ones">${ones(A)}</span>`}</div></div>`;
+      <div class="cell" data-col="ones" id="g2-ones">${aOnesInner}</div></div>`;
 
   const rowB = `<div class="row">
       <div class="cell op">${op}</div>
@@ -534,6 +556,10 @@ function renderConcrete(){
     showOnesFrame(ones(A)+ones(B), ones(A));
     showLegend(ones(A), ones(B));
     $('concreteLabel').textContent = S().concreteAdd(ones(A),ones(B));
+  } else if(state.key==='sub2b'){
+    hideLegend();
+    renderBorrowZones(tens(A), ones(A), null);
+    $('concreteLabel').textContent = S().concreteSubZones(tens(A),ones(A));
   } else {
     hideLegend();
     showOnesFrame(ones(A));
@@ -641,10 +667,16 @@ function buildSteps(){
     const oRes=oA2-oB, tRes=tA2-tB;
     steps.push({say:S().subStart, col:'ones', fx:()=>{}});
     if(borrow){
-      steps.push({say:S().subCant(oA,oB), col:'ones', fx:()=>fillOnes(oA,0)});
-      steps.push({say:S().subBorrowIntent, col:'tens', pulse:'g2-tens', fx:()=>{}});
-      steps.push({say:S().subBorrowTens(tA,tA2), col:'tens', pulse:'bm', fx:()=>showBorrowMark()});
-      steps.push({say:S().subBorrowOnes(oA,oA2), col:'ones', fx:()=>borrowDown()});
+      steps.push({say:S().subCant(oA,oB), col:'ones', fx:()=>{}});
+      steps.push({say:S().subBorrowIntent, col:'tens', fx:()=>{ const d=$('tendot-'+(tA-1)); if(d) d.classList.add('pulsing'); }});
+      steps.push({say:S().subBorrow(tA,tA2,oA,oA2), col:'both', fx:()=>{
+        showBorrowMark(); showOnesBorrowMark();
+        flyTenDotToOnes(()=>{
+          renderBorrowZones(tA2, oA+10, oA);
+          showLegend(oA,10);
+          $('concreteLabel').textContent = S().concreteBorrowed(oA+10);
+        });
+      }});
       steps.push({say:S().subDoIt(oA2,oB,oRes), col:'ones', pulse:'out-ones', fx:()=>{removeOnes(oB); writeOut('ones',oRes);
         setTimeout(()=>{ hideLegend(); $('concreteLabel').textContent=S().concreteLeftover(oRes); }, oB*130+150); }});
     } else {
@@ -699,34 +731,51 @@ function showTensBarsAdd(carryCount, aTens, bTens){
   $('concreteLabel').textContent = S().concreteTensBars(carryCount, aTens, bTens);
 }
 function showTensBarsSub(tA2, tB, tRes){
-  let bars='';
-  for(let i=0;i<tA2;i++) bars += `<div class="tenbarmini pop" data-i="${i}" style="animation-delay:${i*60}ms"></div>`;
-  $('frames').innerHTML = `<div class="tenbars">${bars}</div>`;
+  let dots='';
+  for(let i=0;i<tA2;i++) dots += `<div class="tendot pop" data-i="${i}" style="animation-delay:${i*60}ms">10</div>`;
+  $('frames').innerHTML = `<div class="subzones"><div class="subzone zonedots">${dots}</div></div>`;
   const lg=$('grouplegend');
   if(lg){ lg.style.display='flex';
     lg.innerHTML = `<span class="pill tensA">${tA2}</span><span class="plus">−</span><span class="pill tensB">${tB}</span>`; }
   $('concreteLabel').textContent = S().concreteTensSub(tA2,tB,tRes);
-  const barEls=[...document.querySelectorAll('#frames .tenbarmini')];
+  const barEls=[...document.querySelectorAll('#frames .tendot')];
   let removed=0;
   setTimeout(()=>{
     const iv=setInterval(()=>{
       if(removed>=tB){ clearInterval(iv); return; }
       const el=barEls[barEls.length-1-removed];
-      if(el) el.classList.add('removedbar');
+      if(el) el.classList.add('spent');
       removed++;
     },180);
   }, tA2*60+400);
 }
-function borrowDown(){
-  $('frames').innerHTML = `<div class="tenwrap"><div class="tenbarv drop">10</div></div>`;
-  setTimeout(()=>{
-    const oA=ones(state.a);
-    showOnesFrame(oA+10, oA, true);
-    showLegend(oA, 10);
-    $('concreteLabel').textContent = S().concreteBorrowed(oA+10);
-  },550);
+function renderBorrowZones(tCount, oTotal, oSplit){
+  let tensDots=''; for(let i=0;i<tCount;i++) tensDots+=`<div class="tendot pop" id="tendot-${i}" style="animation-delay:${i*70}ms">10</div>`;
+  const onesExtra = oTotal>10 ? oTotal-10 : 0;
+  const onesHTML = frameHTML(Math.min(oTotal,10), oSplit) + (onesExtra?extrasHTML(onesExtra, oSplit!=null, oSplit!=null?'groupB':''):'');
+  $('frames').innerHTML = `<div class="subzones">
+      <div class="subzone"><div class="zonelabel">${S().zoneTensLabel}</div><div class="zonedots" id="tenzone">${tensDots}</div></div>
+      <div class="subzone"><div class="zonelabel">${S().zoneOnesLabel}</div><div id="onesZoneWrap">${onesHTML}</div></div>
+    </div>`;
+}
+function flyTenDotToOnes(onDone){
+  const src=document.querySelector('#tenzone .tendot:last-child');
+  const dstWrap=$('onesZoneWrap');
+  if(!src||!dstWrap){ if(onDone) onDone(); return; }
+  const a=src.getBoundingClientRect(), b=dstWrap.getBoundingClientRect();
+  const fly=document.createElement('div'); fly.className='tendot flying'; fly.textContent='10';
+  fly.style.left=a.left+'px'; fly.style.top=a.top+'px'; fly.style.width=a.width+'px'; fly.style.height=a.height+'px';
+  document.body.appendChild(fly); src.classList.add('spent');
+  const raf=window.requestAnimationFrame||((f)=>setTimeout(f,16));
+  raf(()=>{
+    fly.style.transition='transform .55s cubic-bezier(.3,.6,.4,1), opacity .55s ease';
+    fly.style.transform=`translate(${(b.left+b.width/2)-(a.left+a.width/2)}px, ${(b.top+b.height/2)-(a.top+a.height/2)}px) scale(.6)`;
+    fly.style.opacity='0.15';
+  });
+  setTimeout(()=>{ fly.remove(); if(onDone) onDone(); }, 580);
 }
 function showBorrowMark(){ const bm=$('bm'); if(bm)bm.classList.add('show'); const s=$('strk-tens'); if(s)s.classList.add('show'); }
+function showOnesBorrowMark(){ const m=$('obm'); if(m) m.classList.add('show'); }
 function removeOnes(count){
   const fills=[...document.querySelectorAll('.slot.fill')];
   let removed=0;
