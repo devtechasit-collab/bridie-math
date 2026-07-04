@@ -100,9 +100,11 @@
   .carrymark{font-family:'Baloo Thai 2';font-weight:800;font-size:38px;color:var(--carry);line-height:1;
     opacity:0;transform:scale(.4);transition:all .4s cubic-bezier(.2,1.4,.4,1)}
   .carrymark.show{opacity:1;transform:scale(1)}
-  .borrowmark{position:absolute;top:-4px;font-family:'Baloo Thai 2';font-weight:800;font-size:18px;color:var(--tens);opacity:0;transition:opacity .3s}
-  .borrowmark.show{opacity:1}
-  .strike{position:absolute;left:8%;right:8%;top:52%;height:4px;background:var(--wrong);border-radius:9px;
+  .borrowmark{position:absolute;top:-14px;right:-10px;font-family:'Baloo Thai 2';font-weight:800;font-size:19px;
+    color:#fff;background:var(--tens);width:26px;height:26px;border-radius:50%;display:grid;place-items:center;
+    box-shadow:0 2px 5px rgba(0,0,0,.18);opacity:0;transform:scale(.4);transition:all .35s cubic-bezier(.2,1.4,.4,1)}
+  .borrowmark.show{opacity:1;transform:scale(1)}
+  .strike{position:absolute;left:8%;right:8%;top:52%;height:4px;background:var(--tens);border-radius:9px;
     transform:scaleX(0);transform-origin:left;transition:transform .35s ease}
   .strike.show{transform:scaleX(1)}
   .colglow{border-radius:14px;transition:background .3s}
@@ -345,8 +347,7 @@ th:{
   answerMsg:(ans)=>`คำตอบคือ <b>${ans}</b> 🎉`,
   subStart:`มาลบกัน! เริ่มจาก <b>หลักหน่วยก่อน</b> เหมือนเดิม`,
   subCant:(oA,oB)=>`หลักหน่วย: <span class="h-ones">${oA}</span> − <span class="h-ones">${oB}</span> ... เอ๊ะ <b>${oA} น้อยกว่า ${oB}</b> ลบไม่ได้!`,
-  subBorrow:`ไม่พอก็ <b>ยืมจากหลักสิบ 1 แท่ง</b> เอามาแตกเป็น 10 หน่วย`,
-  subAfterBorrow:(oA,oA2,tA)=>`ตอนนี้หลักหน่วยมี <b>${oA}+10 = ${oA2}</b> เม็ด  และหลักสิบเหลือ <span class="h-tens">${tA-1}</span> (จาก ${tA} ยืมไป 1)`,
+  subBorrow:(tA,tA2,oA,oA2)=>`ไม่พอก็ <b>ยืมจากหลักสิบ 1 แท่ง</b> เอามาแตกเป็น 10 หน่วย  หลักสิบจาก <span class="h-tens">${tA}</span> เหลือ <span class="h-tens">${tA2}</span>  หลักหน่วยมี <b>${oA}+10 = ${oA2}</b> เม็ด`,
   subDoIt:(oA2,oB,oRes)=>`ลบได้แล้ว: <b>${oA2} − ${oB} = ${oRes}</b> → เขียน <span class="h-ones">${oRes}</span> ในช่องหน่วย`,
   subOnesPlain:(oA,oB,oRes)=>`หลักหน่วย: <span class="h-ones">${oA}</span> − <span class="h-ones">${oB}</span> = <b>${oRes}</b>  (เอา ${oB} เม็ดออก)`,
   subTens:(tA2,tB,tRes)=>`หลักสิบ: <span class="h-tens">${tA2}</span> − <span class="h-tens">${tB}</span> = <b>${tRes}</b>`,
@@ -394,8 +395,7 @@ en:{
   answerMsg:(ans)=>`The answer is <b>${ans}</b>! 🎉`,
   subStart:`Let's subtract! Start with the <b>ones</b>, same as before.`,
   subCant:(oA,oB)=>`Ones: <span class="h-ones">${oA}</span> − <span class="h-ones">${oB}</span> ... uh oh, <b>${oA} is less than ${oB}</b>. We can't!`,
-  subBorrow:`Not enough, so <b>borrow 1 bar from the tens</b> and break it into 10 ones.`,
-  subAfterBorrow:(oA,oA2,tA)=>`Now the ones have <b>${oA}+10 = ${oA2}</b> dots, and the tens have <span class="h-tens">${tA-1}</span> left (was ${tA}, lent 1).`,
+  subBorrow:(tA,tA2,oA,oA2)=>`Not enough, so <b>borrow 1 bar from the tens</b> and break it into 10 ones.  The tens go from <span class="h-tens">${tA}</span> down to <span class="h-tens">${tA2}</span>, and the ones now have <b>${oA}+10 = ${oA2}</b> dots.`,
   subDoIt:(oA2,oB,oRes)=>`Now we can: <b>${oA2} − ${oB} = ${oRes}</b> → write <span class="h-ones">${oRes}</span> in the ones box.`,
   subOnesPlain:(oA,oB,oRes)=>`Ones: <span class="h-ones">${oA}</span> − <span class="h-ones">${oB}</span> = <b>${oRes}</b>  (take ${oB} dots away)`,
   subTens:(tA2,tB,tRes)=>`Tens: <span class="h-tens">${tA2}</span> − <span class="h-tens">${tB}</span> = <b>${tRes}</b>`,
@@ -638,8 +638,7 @@ function buildSteps(){
     steps.push({say:S().subStart, col:'ones', fx:()=>{}});
     if(borrow){
       steps.push({say:S().subCant(oA,oB), col:'ones', fx:()=>fillOnes(oA,0)});
-      steps.push({say:S().subBorrow, col:'both', pulse:'bm', fx:()=>borrowDown()});
-      steps.push({say:S().subAfterBorrow(oA,oA2,tA), col:'both', pulse:'bm', fx:()=>showBorrowMark()});
+      steps.push({say:S().subBorrow(tA,tA2,oA,oA2), col:'both', pulse:'bm', fx:()=>{borrowDown(); setTimeout(showBorrowMark,550);}});
       steps.push({say:S().subDoIt(oA2,oB,oRes), col:'ones', pulse:'out-ones', fx:()=>{removeOnes(oB); writeOut('ones',oRes);
         setTimeout(()=>{ hideLegend(); $('concreteLabel').textContent=S().concreteLeftover(oRes); }, oB*130+150); }});
     } else {
