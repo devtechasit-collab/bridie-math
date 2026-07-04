@@ -100,10 +100,6 @@
   .carrymark{font-family:'Baloo Thai 2';font-weight:800;font-size:38px;color:var(--carry);line-height:1;
     opacity:0;transform:scale(.4);transition:all .4s cubic-bezier(.2,1.4,.4,1)}
   .carrymark.show{opacity:1;transform:scale(1)}
-  .borrowmark{position:absolute;top:-14px;right:-10px;font-family:'Baloo Thai 2';font-weight:800;font-size:19px;
-    color:#fff;background:var(--tens);width:26px;height:26px;border-radius:50%;display:grid;place-items:center;
-    box-shadow:0 2px 5px rgba(0,0,0,.18);opacity:0;transform:scale(.4);transition:all .35s cubic-bezier(.2,1.4,.4,1)}
-  .borrowmark.show{opacity:1;transform:scale(1)}
   .strike{position:absolute;left:8%;right:8%;top:52%;height:4px;background:var(--tens);border-radius:9px;
     transform:scaleX(0);transform-origin:left;transition:transform .35s ease}
   .strike.show{transform:scaleX(1)}
@@ -189,10 +185,11 @@
   .subzone{display:flex;flex-direction:column;align-items:center;gap:8px;flex:1;min-width:0}
   .subzone .zonedots{display:flex;gap:5px;flex-wrap:wrap;justify-content:center}
   .subzone .zonelabel{font-family:'Baloo Thai 2';font-weight:700;font-size:11px;color:var(--ink-soft);text-align:center}
-  /* the borrowed ten stays one visible bundle, kept apart from the loose ones dots */
+  /* the borrowed ten stays one visible bundle, kept apart from the loose ones dots; green = "a ten that moved", same as carry */
   .onesgroups{display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:center}
   .onesgroups .extras{max-width:60px}
-  .tenbundle{padding:5px;border-radius:14px;border:2px dashed var(--ones-b);background:rgba(255,201,138,.15)}
+  .tenbundle{padding:5px;border-radius:14px;border:2px dashed var(--carry);background:var(--carry-soft)}
+  .slot.fill.borrowed{background:var(--carry)}
   .tendot{width:34px;height:34px;border-radius:50%;display:grid;place-items:center;color:#fff;
     font-family:'Baloo Thai 2';font-weight:800;font-size:12px;background:linear-gradient(180deg,#5B9BE8,#2F6FC4);
     box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.35),0 3px 0 #1F4E8C;transition:opacity .35s,transform .35s}
@@ -200,11 +197,12 @@
   .tendot.pulsing{animation:pulse .6s ease infinite}
   .tendot.spent{opacity:0;transform:scale(.3)}
   .tendot.flying{position:fixed;z-index:60;pointer-events:none;transition:none}
-  /* small badge in front of the ones digit showing the ten that just arrived, matches the borrowed dots' shade */
-  .onesborrowmark{position:absolute;top:4px;left:4px;font-family:'Baloo Thai 2';font-weight:800;font-size:19px;
-    color:#7A4A12;background:var(--ones-b);width:26px;height:26px;border-radius:50%;display:grid;place-items:center;
-    box-shadow:0 2px 5px rgba(0,0,0,.18);opacity:0;transform:scale(.4);transition:all .35s cubic-bezier(.2,1.4,.4,1)}
-  .onesborrowmark.show{opacity:1;transform:scale(1)}
+  /* the ones digit joins with the borrowed ten to read as one number, e.g. "13" — the "1" is green like the carry digit */
+  .borrowjoin{display:inline-flex;align-items:center;justify-content:center;gap:1px}
+  .borrowjoin .digit{font-size:38px}
+  .digit.ones.borrowedten{color:#fff;background:var(--carry);border-radius:9px;padding:0 5px;
+    opacity:0;transform:scale(.5);transition:all .35s cubic-bezier(.2,1.4,.4,1)}
+  .digit.ones.borrowedten.show{opacity:1;transform:scale(1)}
   /* column focus highlight (watch mode) */
   .sum .cell[data-col]{border-radius:12px;transition:background .25s,box-shadow .25s}
   .cell.focuscol.f-ones{background:var(--ones-soft);box-shadow:inset 0 0 0 2.5px var(--ones)}
@@ -474,6 +472,8 @@ function renderSum(mode){
     } else {
       carryCell = `<span class="carrymark" id="cm-tens">1</span>`;
     }
+  } else if(A>=10){
+    carryCell = `<span class="carrymark" id="cm-tens-sub"></span>`;
   }
   const carryRow = `<div class="row">
       <div class="cell"></div>
@@ -485,9 +485,8 @@ function renderSum(mode){
 
   // borrow visuals baked into A row for sub
   let aTensInner = A>=10 ? `<span class="digit tens" id="a-tens">${tens(A)}</span>
-        <span class="borrowmark" id="bm">${tens(A)-1}</span>
         <span class="strike" id="strk-tens"></span>` : ``;
-  const aOnesInner = isAdd ? dOnes(A) : `<span class="digit ones" id="a-ones">${ones(A)}</span><span class="onesborrowmark" id="obm">1</span>`;
+  const aOnesInner = isAdd ? dOnes(A) : `<span class="borrowjoin"><span class="digit ones borrowedten" id="obm">1</span><span class="digit ones" id="a-ones">${ones(A)}</span></span>`;
   const rowA = `<div class="row">
       <div class="cell"></div>
       <div class="cell" data-col="tens" id="g2-tens">${isAdd?dTens(A):aTensInner}</div>
@@ -753,10 +752,14 @@ function showTensBarsSub(tA2, tB, tRes){
     },180);
   }, tA2*60+400);
 }
+function borrowBundleHTML(){
+  let slots=''; for(let i=0;i<10;i++) slots+=`<div class="slot fill borrowed popdot" style="animation-delay:${i*40}ms"></div>`;
+  return `<div class="frame10">${slots}</div>`;
+}
 function renderBorrowZones(tCount, oOriginal, borrowed){
   let tensDots=''; for(let i=0;i<tCount;i++) tensDots+=`<div class="tendot pop" id="tendot-${i}" style="animation-delay:${i*70}ms">10</div>`;
   const onesHTML = borrowed
-    ? `<div class="onesgroups">${oOriginal>0?extrasHTML(oOriginal,false,''):''}<div class="tenbundle">${frameHTML(10,0)}</div></div>`
+    ? `<div class="onesgroups">${oOriginal>0?extrasHTML(oOriginal,false,''):''}<div class="tenbundle">${borrowBundleHTML()}</div></div>`
     : frameHTML(Math.min(oOriginal,10)) + (oOriginal>10?extrasHTML(oOriginal-10):'');
   $('frames').innerHTML = `<div class="subzones">
       <div class="subzone"><div class="zonelabel">${S().zoneTensLabel}</div><div class="zonedots" id="tenzone">${tensDots}</div></div>
@@ -779,7 +782,10 @@ function flyTenDotToOnes(onDone){
   });
   setTimeout(()=>{ fly.remove(); if(onDone) onDone(); }, 580);
 }
-function showBorrowMark(){ const bm=$('bm'); if(bm)bm.classList.add('show'); const s=$('strk-tens'); if(s)s.classList.add('show'); }
+function showBorrowMark(){
+  const s=$('strk-tens'); if(s) s.classList.add('show');
+  const cm=$('cm-tens-sub'); if(cm){ cm.textContent = tens(state.a)-1; cm.classList.add('show'); }
+}
 function showOnesBorrowMark(){ const m=$('obm'); if(m) m.classList.add('show'); }
 function removeOnes(count){
   const fills=[...document.querySelectorAll('.slot.fill')];
