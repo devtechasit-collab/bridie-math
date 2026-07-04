@@ -223,10 +223,13 @@
   .wp-dragclone{position:fixed;z-index:80;pointer-events:none;display:inline-grid;place-items:center;
     min-width:30px;height:30px;padding:0 6px;border-radius:9px;background:var(--carry-soft);color:#0d8f63;
     font-family:'Baloo Thai 2';font-weight:800;font-size:18px;box-shadow:0 6px 14px rgba(0,0,0,.25);transform:scale(1.15)}
-  .wp-equation{display:flex;align-items:center;justify-content:center;gap:10px;flex-wrap:wrap;margin-top:6px}
+  /* vertical setup: same shape as the practiced equation — number over number, sign on the left, rule below */
+  .wp-setup{display:flex;flex-direction:column;align-items:flex-end;gap:10px;margin:14px auto 0;width:max-content}
+  .wp-vrow{display:flex;align-items:center;gap:10px}
   .wp-drop{width:58px;height:58px;border-radius:14px;border:3px dashed var(--line);background:#FBFAF4;
     display:grid;place-items:center;font-family:'Baloo Thai 2';font-weight:800;font-size:30px;color:var(--ink-soft);
     transition:all .15s}
+  .wp-dropbig{width:110px;height:64px;font-size:34px}
   .wp-drop.hover{border-color:var(--sun);background:#FFF8E4}
   .wp-drop.filled{border-style:solid;border-color:var(--carry);color:var(--ink);background:var(--carry-soft)}
   .wp-drop.ok{border-style:solid;border-color:var(--carry);background:var(--carry-soft)}
@@ -237,7 +240,7 @@
   .wp-opbtn.sel{border-style:solid;border-color:var(--sun);background:#FFF8E4;color:var(--ink)}
   .wp-opbtn.ok{border-color:var(--carry);background:var(--carry-soft)}
   .wp-opbtn.bad{border-color:var(--wrong);background:var(--wrong-soft);animation:shake .3s}
-  .wp-eq{font-family:'Baloo Thai 2';font-weight:800;font-size:28px;color:var(--ink-soft)}
+  .wp-vrule{width:100%;height:5px;background:var(--ink);border-radius:99px}
   /* step bar */
   .stepbar{display:none;align-items:center;justify-content:center;gap:10px;margin:0 0 12px}
   .stepnum{font-family:'Baloo Thai 2';font-weight:800;font-size:14px;color:var(--ink);
@@ -328,15 +331,16 @@
 
     <div class="stage wordboard" id="wordboard">
       <div class="wp-story" id="wpStory"></div>
-      <div class="wp-equation">
-        <div class="wp-drop" id="wpSlot1" data-slot="num1">?</div>
-        <div class="wp-opgroup" id="wpOpGroup">
-          <button class="wp-opbtn" data-op="+">+</button>
-          <button class="wp-opbtn" data-op="−">−</button>
+      <div class="wp-setup" id="wpSetup">
+        <div class="wp-vrow"><div class="wp-drop wp-dropbig" id="wpSlot1" data-slot="num1">?</div></div>
+        <div class="wp-vrow">
+          <div class="wp-opgroup" id="wpOpGroup">
+            <button class="wp-opbtn" data-op="+">+</button>
+            <button class="wp-opbtn" data-op="−">−</button>
+          </div>
+          <div class="wp-drop wp-dropbig" id="wpSlot2" data-slot="num2">?</div>
         </div>
-        <div class="wp-drop" id="wpSlot2" data-slot="num2">?</div>
-        <span class="wp-eq">=</span>
-        <div class="ans wp-ans" id="wpAnswerBox">?</div>
+        <div class="wp-vrule"></div>
       </div>
     </div>
 
@@ -425,7 +429,6 @@ th:{
   wpStartSay:`ลากตัวเลขจากในโจทย์มาใส่ในช่อง แล้วเลือกเครื่องหมาย (+ หรือ −) ให้ถูกนะ`,
   wpHintNums:`ลองอ่านโจทย์อีกทีนะ ตัวเลขที่ลากไปยังไม่ตรงกับโจทย์เลย`,
   wpHintOp:`เครื่องหมายยังไม่ถูกนะ ลองคิดดูว่าโจทย์นี้ต้อง "รวมกัน" หรือ "เอาออก" กันแน่`,
-  wpHintAns:`ตัวเลขกับเครื่องหมายถูกแล้ว! ลองคิดคำตอบใหม่อีกทีนะ`,
   wpOkMsg:(a,op,b,ans)=>`เก่งมาก! ${a} ${op} ${b} = ${ans} ถูกต้องเลย! 🎉`,
   wordProblems:[
     {op:'+', tpl:(a,b)=>`แม่ซื้อส้มมา <b class="wp-num" data-value="${a}">${a}</b> ผล พ่อซื้อมา <b class="wp-num" data-value="${b}">${b}</b> ผล พ่อและแม่มีส้มรวมกันกี่ผล`},
@@ -495,7 +498,6 @@ en:{
   wpStartSay:`Drag the numbers from the story into the boxes, then pick the right sign (+ or −).`,
   wpHintNums:`Read the story again — the numbers you dragged don't match it yet.`,
   wpHintOp:`The sign isn't right yet. Think about whether this story means "together" or "taking away".`,
-  wpHintAns:`The numbers and sign are right! Try working out the answer again.`,
   wpOkMsg:(a,op,b,ans)=>`Great job! ${a} ${op} ${b} = ${ans} — that's right! 🎉`,
   wordProblems:[
     {op:'+', tpl:(a,b)=>`Mom bought <b class="wp-num" data-value="${a}">${a}</b> oranges. Dad bought <b class="wp-num" data-value="${b}">${b}</b> oranges. How many oranges do Mom and Dad have together?`},
@@ -689,7 +691,6 @@ function selectCell(el){
   el.classList.add('sel'); state.sel=el.dataset.slot;
 }
 function padPress(v){
-  if(state.key==='wordprob'){ wordPadPress(v); return; }
   if(!state.sel) return;
   const el=document.querySelector(`#sum .ans[data-slot="${state.sel}"]`);
   if(!el) return;
@@ -734,8 +735,8 @@ function checkAnswer(){
   if(ic && cellVals.carry) mark(ic, parseInt(cellVals.carry)===carryVal(), true);
 
   if(allOk){
-    setSay(S().okMsg(state.a,state.op,state.b,ans));
-    celebrate(); $('btnCheck').disabled=true;
+    setSay(state.key==='wordprob' ? S().wpOkMsg(state.a,state.op,state.b,ans) : S().okMsg(state.a,state.op,state.b,ans));
+    celebrate(); const bc=$('btnCheck'); if(bc) bc.disabled=true;
     clearTimeout(autoNextTimer);
     autoNextTimer=setTimeout(()=>{ if(state.mode==='try') newRound(); }, 3000);
   } else {
@@ -752,16 +753,16 @@ function checkAnswer(){
   }
 }
 
-/* ================= WORD PROBLEMS (drag numbers, pick the sign) ================= */
-let wp={answer:'',chosenOp:null};
+/* ================= WORD PROBLEMS (drag numbers + pick the sign, then solve it the practiced way) ================= */
+let wp={chosenOp:null};
 function renderWordRound(){
+  $('wordboard').style.display='block'; $('stageNormal').style.display='none';
   const tpl=S().wordProblems[state.tplIndex];
   $('wpStory').innerHTML=tpl.tpl(state.a,state.b);
-  wp={answer:'',chosenOp:null};
-  const s1=$('wpSlot1'), s2=$('wpSlot2'), ab=$('wpAnswerBox');
-  s1.className='wp-drop'; s1.textContent='?'; delete s1.dataset.value;
-  s2.className='wp-drop'; s2.textContent='?'; delete s2.dataset.value;
-  ab.className='ans wp-ans'; ab.textContent='?';
+  wp={chosenOp:null};
+  const s1=$('wpSlot1'), s2=$('wpSlot2');
+  s1.className='wp-drop wp-dropbig'; s1.textContent='?'; delete s1.dataset.value;
+  s2.className='wp-drop wp-dropbig'; s2.textContent='?'; delete s2.dataset.value;
   document.querySelectorAll('.wp-opbtn').forEach(b=>{ b.className='wp-opbtn'; b.onclick=()=>wpChooseOp(b); });
   document.querySelectorAll('#wpStory .wp-num').forEach(el=>{
     el.classList.remove('used','dragging-source');
@@ -773,6 +774,7 @@ function wpChooseOp(btn){
   document.querySelectorAll('.wp-opbtn').forEach(b=>b.classList.remove('sel','ok','bad'));
   btn.classList.add('sel');
   wp.chosenOp=btn.dataset.op;
+  wpCheckSetup();
 }
 function wpStartDrag(e, el){
   if(el.classList.contains('used')) return;
@@ -803,45 +805,34 @@ function wpStartDrag(e, el){
     if(drop&&!drop.classList.contains('filled')){
       drop.textContent=value; drop.dataset.value=value; drop.classList.add('filled');
       el.classList.add('used');
+      wpCheckSetup();
     }
   };
   document.addEventListener('pointermove',move);
   document.addEventListener('pointerup',up);
 }
-function wordPadPress(v){
-  const ab=$('wpAnswerBox');
-  ab.classList.remove('ok','bad');
-  if(v==='del'){ wp.answer=''; ab.textContent='?'; return; }
-  wp.answer=(wp.answer||'')+v; if(wp.answer.length>3) wp.answer=wp.answer.slice(-3);
-  ab.textContent=wp.answer;
-  const trueAns=state.op==='+' ? state.a+state.b : state.a-state.b;
-  if(wp.answer.length>=String(trueAns).length) setTimeout(checkWordAnswer,300);
-}
-function checkWordAnswer(){
-  const trueAns=state.op==='+' ? state.a+state.b : state.a-state.b;
+function wpCheckSetup(){
   const s1=$('wpSlot1'), s2=$('wpSlot2');
+  if(!s1.classList.contains('filled') || !s2.classList.contains('filled') || !wp.chosenOp) return;
   const v1=parseInt(s1.dataset.value), v2=parseInt(s2.dataset.value);
   const numsOk=(v1===state.a&&v2===state.b)||(state.op==='+'&&v1===state.b&&v2===state.a);
   const opOk=wp.chosenOp===state.op;
-  const ansOk=parseInt(wp.answer)===trueAns;
   const mark=(el,ok)=>{ el.classList.remove('ok','bad'); el.classList.add(ok?'ok':'bad'); };
   mark(s1,numsOk); mark(s2,numsOk);
-  const opBtn=document.querySelector(`.wp-opbtn[data-op="${wp.chosenOp||''}"]`);
+  const opBtn=document.querySelector(`.wp-opbtn[data-op="${wp.chosenOp}"]`);
   if(opBtn) mark(opBtn,opOk);
-  mark($('wpAnswerBox'),ansOk);
-
-  if(numsOk&&opOk&&ansOk){
-    setSay(S().wpOkMsg(state.a,state.op,state.b,trueAns));
-    celebrate();
-    clearTimeout(autoNextTimer);
-    autoNextTimer=setTimeout(()=>{ newRound(); }, 3000);
+  if(numsOk&&opOk){
+    setTimeout(wpEnterCalcPhase, 500);
   } else {
-    if(!numsOk) setSay(S().wpHintNums);
-    else if(!opOk) setSay(S().wpHintOp);
-    else setSay(S().wpHintAns);
-    clearTimeout(autoClearTimer);
-    autoClearTimer=setTimeout(()=>{ renderWordRound(); }, 2000);
+    setSay(!numsOk ? S().wpHintNums : S().wpHintOp);
+    setTimeout(renderWordRound, 1600);
   }
+}
+function wpEnterCalcPhase(){
+  $('wordboard').style.display='none'; $('stageNormal').style.display='';
+  renderSum('try');
+  const hasBorrowBox=!!document.querySelector('#sum .ans[data-slot="borrowTens"]');
+  setSay(hasBorrowBox ? S().tryStartSayBorrow : S().tryStartSay);
 }
 
 /* ================= WATCH mode (guided steps) ================= */
