@@ -207,10 +207,10 @@
   .tendot.flying{position:fixed;z-index:60;pointer-events:none;transition:none}
   /* green digit in front of the ones digit, same size, grows in from zero width so it stays inside the ones box */
   .borrowjoin{display:inline-flex;align-items:center;justify-content:center}
-  .digit.ones.borrowbadge{display:inline-block;width:0;overflow:hidden;opacity:0;color:var(--carry);
+  .digit.borrowbadge{display:inline-block;width:0;overflow:hidden;opacity:0;color:var(--carry);
     font-size:36px;transition:width .35s cubic-bezier(.2,1.4,.4,1),opacity .35s ease}
-  .digit.ones.borrowbadge.show{width:.62em;opacity:1}
-  .borrowjoin.revealed .digit.ones:not(.borrowbadge){font-size:36px;transition:font-size .35s ease}
+  .digit.borrowbadge.show{width:.62em;opacity:1}
+  .borrowjoin.revealed .digit:not(.borrowbadge){font-size:36px;transition:font-size .35s ease}
   /* column focus highlight (watch mode) */
   .sum .cell[data-col]{border-radius:12px;transition:background .25s,box-shadow .25s}
   .cell.focuscol.f-ones{background:var(--ones-soft);box-shadow:inset 0 0 0 2.5px var(--ones)}
@@ -928,9 +928,22 @@ function buildAddSeq(trace){
   return seq;
 }
 function buildSubSeq(trace){
-  const reduceCols=trace.filter(c=>c.borrowIn).map(c=>c.i).sort((a,b)=>b-a);
-  const seq=reduceCols.map(i=>'carry'+i);
-  trace.forEach(c=>seq.push('d'+c.i));
+  // Child works low-to-high (ones, tens, hundreds, ...). A column only needs a "carry" box
+  // confirmed *before* its own digit if it independently can't cover db and must borrow from
+  // above — and that borrow may itself cascade through a chain of zero columns.
+  const seq=[];
+  const narrated=new Array(trace.length).fill(false);
+  const resolveChain=(start)=>{
+    let k=start;
+    while(k<trace.length && trace[k].daOrig===0) k++;
+    for(let j=k;j>=start;j--){
+      if(!narrated[j]){ seq.push('carry'+trace[j].i); narrated[j]=true; }
+    }
+  };
+  trace.forEach((c,i)=>{
+    if(c.afterLend<c.db && i+1<trace.length) resolveChain(i+1);
+    seq.push('d'+c.i);
+  });
   return seq;
 }
 function renderMultiSum(mode){
@@ -951,18 +964,28 @@ function renderMultiSum(mode){
   cols.forEach(c=>{
     const pk=PLACE_KEYS[c.i]||('p'+c.i);
     const needsMark=isAdd?c.carryIn:c.borrowIn;
+    const needsOwnBorrow=!isAdd && c.afterLend<c.db;
+    const badge=`<span class="digit ${pk} borrowbadge" id="bm-${c.i}">1</span>`;
     let carryInner='';
     if(needsMark){
-      carryInner = mode==='try'
+      const inner = mode==='try'
         ? `<div class="ans carry" data-slot="carry${c.i}" id="in-carry${c.i}">?</div>`
         : `<span class="carrymark" id="cm-${c.i}"></span>`;
+      carryInner = needsOwnBorrow
+        ? `<span class="borrowjoin" id="join-${c.i}">${badge}${inner}</span>`
+        : inner;
     }
     carryCells += `<div class="cell" data-col="${pk}" style="height:52px">${carryInner}</div>`;
     const aShow = c.i < numDigits(A);
     const aVal = isAdd ? digitAt(A,c.i) : c.daOrig;
-    const aInner = (!isAdd && needsMark)
-      ? `<span class="digit ${pk}" id="a-${c.i}">${aVal}</span><span class="strike" id="strk-${c.i}"></span>`
-      : `<span class="digit ${pk}">${aVal}</span>`;
+    let aInner;
+    if(!isAdd && needsMark){
+      aInner = `<span class="digit ${pk}" id="a-${c.i}">${aVal}</span><span class="strike" id="strk-${c.i}"></span>`;
+    } else if(needsOwnBorrow){
+      aInner = `<span class="borrowjoin" id="join-${c.i}">${badge}<span class="digit ${pk}" id="a-${c.i}">${aVal}</span></span>`;
+    } else {
+      aInner = `<span class="digit ${pk}">${aVal}</span>`;
+    }
     aCells += `<div class="cell" data-col="${pk}">${aShow?aInner:''}</div>`;
     const bShow = c.i < numDigits(B);
     bCells += `<div class="cell" data-col="${pk}">${bShow?`<span class="digit ${pk}">${digitAt(B,c.i)}</span>`:''}</div>`;
@@ -1023,7 +1046,12 @@ function multiPadPress(v){
   if(filledSlot.startsWith('carry')){
     if(parseInt(v)===state.multiExpected[filledSlot]){
       el.classList.add('ok');
-      if(state.op==='−'){ const strk=$('strk-'+filledSlot.slice(5)); if(strk) strk.classList.add('show'); }
+      if(state.op==='−'){
+        const strk=$('strk-'+filledSlot.slice(5)); if(strk) strk.classList.add('show');
+        const belowIdx=parseInt(filledSlot.slice(5))-1;
+        const bm=$('bm-'+belowIdx); if(bm) bm.classList.add('show');
+        const join=$('join-'+belowIdx); if(join) join.classList.add('revealed');
+      }
       if(next){ const nextEl=document.querySelector(`#sumMulti .ans[data-slot="${next}"]`); if(nextEl){ nextEl.classList.remove('locked'); multiSelectCell(nextEl); } }
     } else {
       el.classList.add('bad');
@@ -1081,6 +1109,11 @@ function buildMultiStepsSub(){
   const writeDigit=(i,digit)=>()=>{
     const el=$('out-d'+i); if(el){ el.textContent=digit; el.style.animation='popin .4s cubic-bezier(.2,1.5,.4,1)'; }
   };
+  const receiveBorrow=(i,digit)=>()=>{
+    const bm=$('bm-'+i); if(bm) bm.classList.add('show');
+    const join=$('join-'+i); if(join) join.classList.add('revealed');
+    writeDigit(i,digit)();
+  };
   for(let i=0;i<trace.length;i++){
     const c=trace[i];
     const pk=PLACE_KEYS[c.i]||('p'+c.i);
@@ -1092,7 +1125,7 @@ function buildMultiStepsSub(){
         let k=i+1;
         while(k<trace.length && trace[k].daOrig===0) k++;
         steps.push({say:S().multiSubZeroNoLend(pname), col:pk, fx:()=>{}});
-        for(let j=k;j>=i+1;j--){
+        for(let j=k;j>=i;j--){
           const cj=trace[j];
           const pkj=PLACE_KEYS[cj.i]||('p'+cj.i);
           const pnamej=placeName(cj.i);
@@ -1110,7 +1143,7 @@ function buildMultiStepsSub(){
     // since a resolved zero-chain column always ends up with afterLend=9.)
     if(c.afterLend < c.db){
       steps.push({say:S().multiSubNotEnough(pname,c.afterLend,c.db), col:pk, fx:()=>{}});
-      steps.push({say:S().multiSubReceived(pname,c.afterLend,c.da,c.db,c.digit), col:pk, pulse:'out-d'+c.i, fx:writeDigit(c.i,c.digit)});
+      steps.push({say:S().multiSubReceived(pname,c.afterLend,c.da,c.db,c.digit), col:pk, pulse:'out-d'+c.i, fx:receiveBorrow(c.i,c.digit)});
     } else {
       steps.push({say:S().multiSubCol(pname,c.afterLend,c.db,c.digit), col:pk, pulse:'out-d'+c.i, fx:writeDigit(c.i,c.digit)});
     }
