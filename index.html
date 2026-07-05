@@ -671,15 +671,9 @@ function renderConcrete(){
 /* ================= TRY mode ================= */
 let cellVals={};
 let autoNextTimer=null;
-let autoClearTimer=null;
-function resetAnswerForm(){
-  cellVals={};
-  renderSum('try');
-  const hasBorrowBox = !!document.querySelector('#sum .ans[data-slot="borrowTens"]');
-  setSay(hasBorrowBox ? S().tryStartSayBorrow : S().tryStartSay);
-}
-function isLastSlot(slot){
-  return document.querySelector('#sum .ans[data-slot="tens"]') ? slot==='tens' : slot==='ones';
+function readyToCheck(){
+  const hasTens=!!document.querySelector('#sum .ans[data-slot="tens"]');
+  return !!cellVals.ones && (!hasTens || !!cellVals.tens);
 }
 function selectCell(el){
   if(el.classList.contains('locked')){
@@ -719,7 +713,7 @@ function padPress(v){
     const tensEl=document.querySelector('#sum .ans[data-slot="tens"]');
     if(tensEl){ tensEl.classList.remove('locked'); selectCell(tensEl); }
   }
-  if(isLastSlot(filledSlot)) setTimeout(checkAnswer, 300);
+  if((filledSlot==='ones'||filledSlot==='tens') && readyToCheck()) setTimeout(checkAnswer, 300);
 }
 function checkAnswer(){
   const ans=answer();
@@ -748,8 +742,9 @@ function checkAnswer(){
     } else {
       setSay(S().hintGeneric);
     }
-    clearTimeout(autoClearTimer);
-    autoClearTimer=setTimeout(()=>{ if(state.mode==='try') resetAnswerForm(); }, 2000);
+    // leave the correct boxes as-is; select the first wrong one so the child can fix just that part
+    const badEl=document.querySelector('#sum .ans.bad');
+    if(badEl) selectCell(badEl);
   }
 }
 
@@ -1040,7 +1035,7 @@ function beep(){ try{ actx=actx||new (window.AudioContext||window.webkitAudioCon
     g.gain.exponentialRampToValueAtTime(0.0001,t+0.18);o.start(t);o.stop(t+0.2);});}catch(e){} }
 
 /* ================= navigation ================= */
-function goHome(){ clearTimeout(autoNextTimer); clearTimeout(autoClearTimer); $('home').style.display='block'; $('board').classList.remove('show'); $('back').classList.remove('show'); }
+function goHome(){ clearTimeout(autoNextTimer); $('home').style.display='block'; $('board').classList.remove('show'); $('back').classList.remove('show'); }
 function openLesson(key){
   state.key=key; $('home').style.display='none'; $('board').classList.add('show'); $('back').classList.add('show');
   $('boardTitle').textContent=S().lessons[key].title;
@@ -1050,7 +1045,6 @@ function openLesson(key){
 function newProblem(){ const {a,b,op,tplIndex}=makeProblem(state.key); state.a=a; state.b=b; state.op=op; state.tplIndex=tplIndex; state.sel=null; }
 function renderRound(){
   clearTimeout(autoNextTimer);
-  clearTimeout(autoClearTimer);
   cellVals={};
   const isWP = state.key==='wordprob';
   $('stageNormal').style.display = isWP ? 'none' : '';
