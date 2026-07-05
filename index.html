@@ -1118,35 +1118,40 @@ function buildMultiStepsSub(){
     const join=$('join-'+i); if(join) join.classList.add('revealed');
     writeDigit(i,digit)();
   };
+  // Resolves "column `start` (and further up, through any chain of zeros) lends 1 down" —
+  // narrated in full, top-down, BEFORE the column below is allowed to receive and compute.
+  // A column can only ever need this once, so it's safe to call from wherever the need arises.
+  const resolveChain=(start)=>{
+    if(narrated[start]) return;
+    const pname=placeName(trace[start].i);
+    const pk=PLACE_KEYS[trace[start].i]||('p'+trace[start].i);
+    if(trace[start].daOrig===0){
+      let k=start;
+      while(k<trace.length && trace[k].daOrig===0) k++;
+      steps.push({say:S().multiSubZeroNoLend(pname), col:pk, fx:()=>{}});
+      for(let j=k;j>=start;j--){
+        const cj=trace[j];
+        const pkj=PLACE_KEYS[cj.i]||('p'+cj.i);
+        const pnamej=placeName(cj.i);
+        const say = (j<k) ? S().multiSubCascade(pnamej,placeName(cj.i+1),cj.daOrig,cj.afterLend) : S().multiSubLend(pnamej,cj.daOrig,cj.afterLend);
+        steps.push({say, col:pkj, fx:reveal(cj.i,cj.afterLend)});
+        narrated[j]=true;
+      }
+    } else {
+      steps.push({say:S().multiSubLend(pname,trace[start].daOrig,trace[start].afterLend), col:pk, fx:reveal(start,trace[start].afterLend)});
+      narrated[start]=true;
+    }
+  };
   for(let i=0;i<trace.length;i++){
     const c=trace[i];
     const pk=PLACE_KEYS[c.i]||('p'+c.i);
     const pname=placeName(c.i);
-    // Step A: if this column owes 1 to the column below, pay it off first — either directly
-    // (it has enough of its own digit) or by reaching further up through a chain of zeros.
-    if(c.borrowIn && !narrated[i]){
-      if(c.daOrig===0){
-        let k=i+1;
-        while(k<trace.length && trace[k].daOrig===0) k++;
-        steps.push({say:S().multiSubZeroNoLend(pname), col:pk, fx:()=>{}});
-        for(let j=k;j>=i;j--){
-          const cj=trace[j];
-          const pkj=PLACE_KEYS[cj.i]||('p'+cj.i);
-          const pnamej=placeName(cj.i);
-          const say = (j<k) ? S().multiSubCascade(pnamej,placeName(cj.i+1),cj.daOrig,cj.afterLend) : S().multiSubLend(pnamej,cj.daOrig,cj.afterLend);
-          steps.push({say, col:pkj, fx:reveal(cj.i,cj.afterLend)});
-          narrated[j]=true;
-        }
-      } else {
-        steps.push({say:S().multiSubLend(pname,c.daOrig,c.afterLend), col:pk, fx:reveal(c.i,c.afterLend)});
-      }
-      narrated[i]=true;
-    }
-    // Step B: with the debt (if any) paid off, does this column separately need its own
-    // borrow from above to cover db? (mutually exclusive with the zero-chain case above,
-    // since a resolved zero-chain column always ends up with afterLend=9.)
+    // Does this column need to borrow from above for its OWN subtraction? If so, resolve
+    // (and narrate) that entire lending chain first — otherwise the receive-and-compute step
+    // below would use a "10" that was never shown arriving.
     if(c.afterLend < c.db){
       steps.push({say:S().multiSubNotEnough(pname,c.afterLend,c.db), col:pk, fx:()=>{}});
+      if(i+1<trace.length) resolveChain(i+1);
       steps.push({say:S().multiSubReceived(pname,c.afterLend,c.da,c.db,c.digit), col:pk, pulse:'out-d'+c.i, fx:receiveBorrow(c.i,c.digit)});
     } else {
       steps.push({say:S().multiSubCol(pname,c.afterLend,c.db,c.digit), col:pk, pulse:'out-d'+c.i, fx:writeDigit(c.i,c.digit)});
