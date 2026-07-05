@@ -977,7 +977,7 @@ function renderMultiSum(mode){
         ? `<span class="borrowjoin" id="join-${c.i}">${badge}${inner}</span>`
         : inner;
     }
-    carryCells += `<div class="cell" data-col="${pk}" style="height:52px">${carryInner}</div>`;
+    carryCells += `<div class="cell" data-col="${pk}" id="cell-carry-${c.i}" style="height:52px">${carryInner}</div>`;
     const aShow = c.i < numDigits(A);
     const aVal = isAdd ? digitAt(A,c.i) : c.daOrig;
     let aInner;
@@ -988,13 +988,13 @@ function renderMultiSum(mode){
     } else {
       aInner = `<span class="digit ${pk}">${aVal}</span>`;
     }
-    aCells += `<div class="cell" data-col="${pk}">${aShow?aInner:''}</div>`;
+    aCells += `<div class="cell" data-col="${pk}" id="cell-a-${c.i}">${aShow?aInner:''}</div>`;
     const bShow = c.i < numDigits(B);
-    bCells += `<div class="cell" data-col="${pk}">${bShow?`<span class="digit ${pk}">${digitAt(B,c.i)}</span>`:''}</div>`;
+    bCells += `<div class="cell" data-col="${pk}" id="cell-b-${c.i}">${bShow?`<span class="digit ${pk}">${digitAt(B,c.i)}</span>`:''}</div>`;
     const ansInner = mode==='try'
       ? `<div class="ans ${pk}" data-slot="d${c.i}" id="in-d${c.i}"></div>`
       : `<span class="digit ${pk}" id="out-d${c.i}"></span>`;
-    ansCells += `<div class="cell" data-col="${pk}">${ansInner}</div>`;
+    ansCells += `<div class="cell" data-col="${pk}" id="cell-ans-${c.i}">${ansInner}</div>`;
   });
 
   const carryRow=`<div class="row" style="grid-template-columns:${gridCols}"><div class="cell"></div>${carryCells}</div>`;
@@ -1021,6 +1021,11 @@ function multiClearFocus(){
 function multiFocusCol(col){
   multiClearFocus();
   document.querySelectorAll(`#sumMulti [data-col="${col}"]`).forEach(e=>e.classList.add('focuscol','f-'+col));
+}
+function multiFocusCells(i,rows){
+  multiClearFocus();
+  const pk=PLACE_KEYS[i]||('p'+i);
+  rows.forEach(r=>{ const el=$('cell-'+r+'-'+i); if(el) el.classList.add('focuscol','f-'+pk); });
 }
 function multiSelectCell(el){
   if(el.classList.contains('locked')){
@@ -1090,8 +1095,9 @@ function buildMultiStepsAdd(){
     const pname=placeName(c.i);
     let say = c.carryIn ? S().multiAddColCarry(pname,c.da,c.db,c.sum) : S().multiAddCol(pname,c.da,c.db,c.sum);
     if(c.carryOut) say += ' ' + S().multiCarryNote(placeName(c.i+1));
+    const rows=['a','b','ans']; if(c.carryIn) rows.push('carry');
     steps.push({
-      say, col:pk, pulse:'out-d'+c.i,
+      say, col:pk, mcells:{i:c.i, rows}, pulse:'out-d'+c.i,
       fx:()=>{
         const el=$('out-d'+c.i); if(el){ el.textContent=c.digit; el.style.animation='popin .4s cubic-bezier(.2,1.5,.4,1)'; }
         if(c.carryOut){ const cm=$('cm-'+(c.i+1)); if(cm){ cm.textContent='1'; cm.classList.add('show'); } }
@@ -1128,17 +1134,17 @@ function buildMultiStepsSub(){
     if(trace[start].daOrig===0){
       let k=start;
       while(k<trace.length && trace[k].daOrig===0) k++;
-      steps.push({say:S().multiSubZeroNoLend(pname), col:pk, fx:()=>{}});
+      steps.push({say:S().multiSubZeroNoLend(pname), col:pk, mcells:{i:start,rows:['a']}, fx:()=>{}});
       for(let j=k;j>=start;j--){
         const cj=trace[j];
         const pkj=PLACE_KEYS[cj.i]||('p'+cj.i);
         const pnamej=placeName(cj.i);
         const say = (j<k) ? S().multiSubCascade(pnamej,placeName(cj.i+1),cj.daOrig,cj.afterLend) : S().multiSubLend(pnamej,cj.daOrig,cj.afterLend);
-        steps.push({say, col:pkj, fx:reveal(cj.i,cj.afterLend)});
+        steps.push({say, col:pkj, mcells:{i:cj.i,rows:['a','carry']}, fx:reveal(cj.i,cj.afterLend)});
         narrated[j]=true;
       }
     } else {
-      steps.push({say:S().multiSubLend(pname,trace[start].daOrig,trace[start].afterLend), col:pk, fx:reveal(start,trace[start].afterLend)});
+      steps.push({say:S().multiSubLend(pname,trace[start].daOrig,trace[start].afterLend), col:pk, mcells:{i:start,rows:['a','carry']}, fx:reveal(start,trace[start].afterLend)});
       narrated[start]=true;
     }
   };
@@ -1150,11 +1156,11 @@ function buildMultiStepsSub(){
     // (and narrate) that entire lending chain first — otherwise the receive-and-compute step
     // below would use a "10" that was never shown arriving.
     if(c.afterLend < c.db){
-      steps.push({say:S().multiSubNotEnough(pname,c.afterLend,c.db), col:pk, fx:()=>{}});
+      steps.push({say:S().multiSubNotEnough(pname,c.afterLend,c.db), col:pk, mcells:{i:c.i,rows:['a','b']}, fx:()=>{}});
       if(i+1<trace.length) resolveChain(i+1);
-      steps.push({say:S().multiSubReceived(pname,c.afterLend,c.da,c.db,c.digit), col:pk, pulse:'out-d'+c.i, fx:receiveBorrow(c.i,c.digit)});
+      steps.push({say:S().multiSubReceived(pname,c.afterLend,c.da,c.db,c.digit), col:pk, mcells:{i:c.i,rows:['a','ans']}, pulse:'out-d'+c.i, fx:receiveBorrow(c.i,c.digit)});
     } else {
-      steps.push({say:S().multiSubCol(pname,c.afterLend,c.db,c.digit), col:pk, pulse:'out-d'+c.i, fx:writeDigit(c.i,c.digit)});
+      steps.push({say:S().multiSubCol(pname,c.afterLend,c.db,c.digit), col:pk, mcells:{i:c.i,rows:['a','b','ans']}, pulse:'out-d'+c.i, fx:writeDigit(c.i,c.digit)});
     }
   }
   steps.push({say:S().answerMsg(answer()), col:null, fx:()=>done(answer())});
@@ -1444,7 +1450,9 @@ function nextStep(){
   const st=state.watchSteps[state.watchIdx];
   setSay(st.say);
   const isMulti=isMultiKey();
-  if(st.col) (isMulti?multiFocusCol(st.col):focusCol(st.col)); else (isMulti?multiClearFocus():clearFocus());
+  if(isMulti && st.mcells) multiFocusCells(st.mcells.i, st.mcells.rows);
+  else if(st.col) (isMulti?multiFocusCol(st.col):focusCol(st.col));
+  else (isMulti?multiClearFocus():clearFocus());
   if(st.fx) st.fx();
   if(st.pulse) pulseCell(st.pulse);
   state.watchIdx++;
