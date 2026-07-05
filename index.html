@@ -15,6 +15,8 @@
     --ink-soft:#6A7783;
     --ones:#FF8A3D;      --ones-soft:#FFE7D2;    --ones-b:#FFC98A;
     --tens:#3B7DD8;      --tens-soft:#DCE9FB;    --tens-b:#8FB8E8;
+    --hundreds:#A855F7;  --hundreds-soft:#F0E4FF; --hundreds-b:#C9A0FA;
+    --thousands:#0D9488; --thousands-soft:#CCFBF1; --thousands-b:#5EC9BE;
     --carry:#12B981;     --carry-soft:#D2F4E6;
     --sun:#FFC531;
     --line:#EDE6D6;
@@ -98,6 +100,10 @@
   .digit{font-family:'Baloo Thai 2';font-weight:800;font-size:46px;line-height:1}
   .digit.ones{color:var(--ones)}
   .digit.tens{color:var(--tens)}
+  .digit.hundreds{color:var(--hundreds)}
+  .digit.thousands{color:var(--thousands)}
+  .ans.hundreds{color:var(--hundreds)}
+  .ans.thousands{color:var(--thousands)}
   .sum .rule{grid-column:1 / -1;height:5px;background:var(--ink);border-radius:99px;margin:2px 0 4px}
   .carrymark{font-family:'Baloo Thai 2';font-weight:800;font-size:38px;color:var(--carry);line-height:1;
     opacity:0;transform:scale(.4);transition:all .4s cubic-bezier(.2,1.4,.4,1)}
@@ -209,6 +215,8 @@
   .sum .cell[data-col]{border-radius:12px;transition:background .25s,box-shadow .25s}
   .cell.focuscol.f-ones{background:var(--ones-soft);box-shadow:inset 0 0 0 2.5px var(--ones)}
   .cell.focuscol.f-tens{background:var(--tens-soft);box-shadow:inset 0 0 0 2.5px var(--tens)}
+  .cell.focuscol.f-hundreds{background:var(--hundreds-soft);box-shadow:inset 0 0 0 2.5px var(--hundreds)}
+  .cell.focuscol.f-thousands{background:var(--thousands-soft);box-shadow:inset 0 0 0 2.5px var(--thousands)}
   .focuscell{animation:cellpulse 1.1s ease-in-out infinite}
   @keyframes cellpulse{50%{transform:scale(1.14)}}
   /* word problems: drag numbers from the story into the equation, pick the operator yourself */
@@ -344,6 +352,10 @@
       </div>
     </div>
 
+    <div class="stage" id="stageMulti" style="display:none">
+      <div class="sum" id="sumMulti"></div>
+    </div>
+
     <div class="say" id="say"><span class="bird">🐤</span><span id="sayText"></span></div>
 
     <!-- try mode pad -->
@@ -366,9 +378,11 @@ const LESSONS = {
   sub2b: {op:'−', icon:'－', cls:'sub', tag:'hard'},
   mixed: {op:'+', icon:'🎲', cls:'mixed', tag:'hard'},
   wordprob: {op:'+', icon:'📖', cls:'word', tag:'hard'},
+  add3: {op:'+', icon:'＋', cls:'add', tag:'hard'},
+  add4: {op:'+', icon:'＋', cls:'add', tag:'hard'},
 };
 
-let state = { key:null, mode:'try', lang:'th', a:0, b:0, op:'+', tplIndex:0, sel:null, watchSteps:[], watchIdx:0 };
+let state = { key:null, mode:'try', lang:'th', a:0, b:0, op:'+', tplIndex:0, sel:null, watchSteps:[], watchIdx:0, multiSeq:[] };
 
 /* ================= language strings ================= */
 const T = {
@@ -387,6 +401,8 @@ th:{
     sub2b:{title:`ลบ 2 หลัก (มียืม)`, desc:`32 − 15 หน่วยไม่พอ ต้องยืม`},
     mixed:{title:`โจทย์รวม (สุ่ม) 🎲`, desc:`เจอบวกหรือลบแบบไหนก็ได้ ท้าทายทุกอย่างที่เรียนมา`},
     wordprob:{title:`โจทย์ปัญหา 📖`, desc:`อ่านเรื่อง ลากตัวเลขมาวาง แล้วเลือกเครื่องหมายเอง`},
+    add3:{title:`บวก 3 หลัก`, desc:`456 + 178 อาจทดครั้งเดียวหรือหลายครั้ง`},
+    add4:{title:`บวก 4 หลัก`, desc:`4567 + 1789 ท้าทายสุด!`},
   },
   concreteAdd:(a,b)=>`นับเม็ดหลักหน่วยที่ต้องบวกกัน: ${a} + ${b}`,
   concreteSub:`เม็ดส้ม = หลักหน่วยของตัวตั้ง  •  แท่งฟ้า = หลักสิบ`,
@@ -430,6 +446,10 @@ th:{
   wpHintNums:`ลองอ่านโจทย์อีกทีนะ ตัวเลขที่ลากไปยังไม่ตรงกับโจทย์เลย`,
   wpHintOp:`เครื่องหมายยังไม่ถูกนะ ลองคิดดูว่าโจทย์นี้ต้อง "รวมกัน" หรือ "เอาออก" กันแน่`,
   wpOkMsg:(a,op,b,ans)=>`เก่งมาก! ${a} ${op} ${b} = ${ans} ถูกต้องเลย! 🎉`,
+  placeNames:{ones:'หน่วย',tens:'สิบ',hundreds:'ร้อย',thousands:'พัน'},
+  multiAddCol:(place,da,db,sum)=>`หลัก${place}: ${da} + ${db} = <b>${sum}</b>`,
+  multiAddColCarry:(place,da,db,sum)=>`หลัก${place}: ทด 1 + ${da} + ${db} = <b>${sum}</b>`,
+  multiCarryNote:(nextPlace)=>`เกิน 10 ทด 1 ไปหลัก${nextPlace}`,
   wordProblems:[
     {op:'+', tpl:(a,b)=>`แม่ซื้อส้มมา <b class="wp-num" data-value="${a}">${a}</b> ผล พ่อซื้อมา <b class="wp-num" data-value="${b}">${b}</b> ผล พ่อและแม่มีส้มรวมกันกี่ผล`},
     {op:'+', tpl:(a,b)=>`ในสวนมีนกอยู่ <b class="wp-num" data-value="${a}">${a}</b> ตัว บินมาเพิ่มอีก <b class="wp-num" data-value="${b}">${b}</b> ตัว ตอนนี้มีนกทั้งหมดกี่ตัว`},
@@ -456,6 +476,8 @@ en:{
     sub2b:{title:`Subtract 2-digit (borrow)`, desc:`32 − 15 — not enough ones, borrow!`},
     mixed:{title:`Mixed practice (random) 🎲`, desc:`Could be add or subtract — anything you've learned!`},
     wordprob:{title:`Word problems 📖`, desc:`Read the story, drag the numbers, pick the sign yourself`},
+    add3:{title:`Add 3-digit`, desc:`456 + 178 — maybe one carry, maybe more`},
+    add4:{title:`Add 4-digit`, desc:`4567 + 1789 — the ultimate challenge!`},
   },
   concreteAdd:(a,b)=>`Count the ones to add: ${a} + ${b}`,
   concreteSub:`Orange = ones   •   Blue bar = tens`,
@@ -499,6 +521,10 @@ en:{
   wpHintNums:`Read the story again — the numbers you dragged don't match it yet.`,
   wpHintOp:`The sign isn't right yet. Think about whether this story means "together" or "taking away".`,
   wpOkMsg:(a,op,b,ans)=>`Great job! ${a} ${op} ${b} = ${ans} — that's right! 🎉`,
+  placeNames:{ones:'ones',tens:'tens',hundreds:'hundreds',thousands:'thousands'},
+  multiAddCol:(place,da,db,sum)=>`${place}: ${da} + ${db} = <b>${sum}</b>`,
+  multiAddColCarry:(place,da,db,sum)=>`${place}: carried 1 + ${da} + ${db} = <b>${sum}</b>`,
+  multiCarryNote:(nextPlace)=>`That's 10 or more, so carry 1 to the ${nextPlace}.`,
   wordProblems:[
     {op:'+', tpl:(a,b)=>`Mom bought <b class="wp-num" data-value="${a}">${a}</b> oranges. Dad bought <b class="wp-num" data-value="${b}">${b}</b> oranges. How many oranges do Mom and Dad have together?`},
     {op:'+', tpl:(a,b)=>`There were <b class="wp-num" data-value="${a}">${a}</b> birds in the garden. <b class="wp-num" data-value="${b}">${b}</b> more flew in. How many birds are there now?`},
@@ -516,6 +542,37 @@ function S(){ return T[state.lang]; }
 /* ================= problem generator ================= */
 const rnd=(lo,hi)=>Math.floor(Math.random()*(hi-lo+1))+lo;
 const ones=n=>n%10, tens=n=>Math.floor(n/10);
+
+/* generalized N-digit arithmetic engine — one source of truth for carry/borrow at any place value */
+const digitAt=(n,i)=>Math.floor(n/10**i)%10;
+const numDigits=(n)=>Math.max(1,String(Math.abs(n)).length);
+function addTrace(a,b){
+  const len=Math.max(numDigits(a),numDigits(b));
+  const cols=[]; let carry=0;
+  for(let i=0;i<len;i++){
+    const da=digitAt(a,i), db=digitAt(b,i);
+    const sum=da+db+carry;
+    const digit=sum%10, carryOut=sum>=10?1:0;
+    cols.push({i,da,db,carryIn:carry,sum,digit,carryOut});
+    carry=carryOut;
+  }
+  if(carry) cols.push({i:len,da:0,db:0,carryIn:carry,sum:carry,digit:carry,carryOut:0});
+  return cols;
+}
+function subTrace(a,b){
+  const len=numDigits(a);
+  const cols=[]; let borrow=0;
+  for(let i=0;i<len;i++){
+    let da=digitAt(a,i)-borrow;
+    const db=digitAt(b,i);
+    let borrowOut=0;
+    if(da<db){ da+=10; borrowOut=1; }
+    const digit=da-db;
+    cols.push({i,daOrig:digitAt(a,i),da,db,borrowIn:borrow,borrowOut,digit});
+    borrow=borrowOut;
+  }
+  return cols;
+}
 
 function makeProblem(key){
   if(key==='mixed'){
@@ -539,6 +596,8 @@ function makeProblem(key){
     if(key==='sub1'){ a=rnd(4,9); b=rnd(1,a); return {a,b,op}; }
     if(key==='sub2n'){ a=rnd(35,99); b=rnd(11,a-10); if(ones(a)>=ones(b) && tens(a)>=tens(b)) return{a,b,op}; }
     if(key==='sub2b'){ a=rnd(22,95); b=rnd(13,a-8); if(ones(a)<ones(b) && tens(a)>tens(b)) return{a,b,op}; }
+    if(key==='add3'){ a=rnd(100,999); b=rnd(100,999); return {a,b,op}; }
+    if(key==='add4'){ a=rnd(1000,9999); b=rnd(1000,9999); return {a,b,op}; }
   }
   return {a:27,b:15,op};
 }
@@ -685,6 +744,7 @@ function selectCell(el){
   el.classList.add('sel'); state.sel=el.dataset.slot;
 }
 function padPress(v){
+  if(isMultiKey()){ multiPadPress(v); return; }
   if(!state.sel) return;
   const el=document.querySelector(`#sum .ans[data-slot="${state.sel}"]`);
   if(!el) return;
@@ -828,6 +888,140 @@ function wpEnterCalcPhase(){
   renderSum('try');
   const hasBorrowBox=!!document.querySelector('#sum .ans[data-slot="borrowTens"]');
   setSay(hasBorrowBox ? S().tryStartSayBorrow : S().tryStartSay);
+}
+
+/* ================= MULTI-DIGIT (3-4 digit addition, generalized N-column engine) ================= */
+const PLACE_KEYS=['ones','tens','hundreds','thousands'];
+function placeName(i){ return S().placeNames[PLACE_KEYS[i]] || PLACE_KEYS[i] || ('p'+i); }
+function isMultiKey(){ return state.key==='add3'||state.key==='add4'; }
+
+function renderMultiSum(mode){
+  const A=state.a, B=state.b;
+  const trace=addTrace(A,B);
+  const cols=[...trace].reverse();
+  const gridCols=`40px repeat(${cols.length},62px)`;
+
+  let carryCells='', aCells='', bCells='', ansCells='';
+  cols.forEach(c=>{
+    const pk=PLACE_KEYS[c.i]||('p'+c.i);
+    let carryInner='';
+    if(c.carryIn){
+      carryInner = mode==='try'
+        ? `<div class="ans carry" data-slot="carry${c.i}" id="in-carry${c.i}">?</div>`
+        : `<span class="carrymark" id="cm-${c.i}"></span>`;
+    }
+    carryCells += `<div class="cell" data-col="${pk}" style="height:52px">${carryInner}</div>`;
+    const aShow = c.i < numDigits(A);
+    aCells += `<div class="cell" data-col="${pk}">${aShow?`<span class="digit ${pk}">${digitAt(A,c.i)}</span>`:''}</div>`;
+    const bShow = c.i < numDigits(B);
+    bCells += `<div class="cell" data-col="${pk}">${bShow?`<span class="digit ${pk}">${digitAt(B,c.i)}</span>`:''}</div>`;
+    const ansInner = mode==='try'
+      ? `<div class="ans ${pk}" data-slot="d${c.i}" id="in-d${c.i}"></div>`
+      : `<span class="digit ${pk}" id="out-d${c.i}"></span>`;
+    ansCells += `<div class="cell" data-col="${pk}">${ansInner}</div>`;
+  });
+
+  const carryRow=`<div class="row" style="grid-template-columns:${gridCols}"><div class="cell"></div>${carryCells}</div>`;
+  const rowA=`<div class="row" style="grid-template-columns:${gridCols}"><div class="cell"></div>${aCells}</div>`;
+  const rowB=`<div class="row" style="grid-template-columns:${gridCols}"><div class="cell op">+</div>${bCells}</div>`;
+  const rowAns=`<div class="row" style="grid-template-columns:${gridCols}"><div class="cell"></div>${ansCells}</div>`;
+  $('sumMulti').innerHTML = carryRow+rowA+rowB+`<div class="rule"></div>`+rowAns;
+
+  if(mode==='try'){
+    state.multiSeq=[];
+    trace.forEach((c,idx)=>{
+      state.multiSeq.push('d'+c.i);
+      if(idx+1<trace.length && trace[idx+1].carryIn) state.multiSeq.push('carry'+trace[idx+1].i);
+    });
+    document.querySelectorAll('#sumMulti .ans').forEach(el=>{
+      el.onclick=()=>multiSelectCell(el);
+      if(el.dataset.slot!=='d0') el.classList.add('locked');
+    });
+    const first=document.querySelector('#sumMulti .ans[data-slot="d0"]');
+    if(first) multiSelectCell(first);
+  }
+}
+function multiClearFocus(){
+  document.querySelectorAll('#sumMulti .focuscol').forEach(e=>e.classList.remove('focuscol','f-ones','f-tens','f-hundreds','f-thousands'));
+  document.querySelectorAll('#sumMulti .focuscell').forEach(e=>e.classList.remove('focuscell'));
+}
+function multiFocusCol(col){
+  multiClearFocus();
+  document.querySelectorAll(`#sumMulti [data-col="${col}"]`).forEach(e=>e.classList.add('focuscol','f-'+col));
+}
+function multiSelectCell(el){
+  if(el.classList.contains('locked')){
+    setSay(S().lockedHint);
+    el.classList.remove('shakeit'); void el.offsetWidth; el.classList.add('shakeit');
+    return;
+  }
+  document.querySelectorAll('#sumMulti .ans').forEach(x=>x.classList.remove('sel'));
+  el.classList.add('sel'); state.sel=el.dataset.slot;
+}
+function multiReadyToCheck(){
+  return [...document.querySelectorAll('#sumMulti .ans[data-slot^="d"]')].every(el=>!!cellVals[el.dataset.slot]);
+}
+function multiPadPress(v){
+  if(!state.sel) return;
+  const el=document.querySelector(`#sumMulti .ans[data-slot="${state.sel}"]`);
+  if(!el) return;
+  el.classList.remove('ok','bad');
+  if(v==='del'){ cellVals[state.sel]=''; el.textContent=''; return; }
+  const filledSlot=state.sel;
+  cellVals[filledSlot]=v; el.textContent=v;
+  const seq=state.multiSeq||[];
+  const idx=seq.indexOf(filledSlot);
+  const next=idx>=0 ? seq[idx+1] : null;
+  if(filledSlot.startsWith('carry')){
+    if(v==='1'){
+      el.classList.add('ok');
+      if(next){ const nextEl=document.querySelector(`#sumMulti .ans[data-slot="${next}"]`); if(nextEl){ nextEl.classList.remove('locked'); multiSelectCell(nextEl); } }
+    } else {
+      el.classList.add('bad');
+      setTimeout(()=>{ cellVals[filledSlot]=''; el.textContent='?'; el.classList.remove('bad'); }, 900);
+    }
+    return;
+  }
+  if(next){ const nextEl=document.querySelector(`#sumMulti .ans[data-slot="${next}"]`); if(nextEl){ nextEl.classList.remove('locked'); multiSelectCell(nextEl); } }
+  if(multiReadyToCheck()) setTimeout(multiCheckAnswer,300);
+}
+function multiCheckAnswer(){
+  const trace=addTrace(state.a,state.b);
+  let allOk=true;
+  const mark=(el,ok)=>{ if(!el)return; el.classList.remove('ok','bad','sel'); el.classList.add(ok?'ok':'bad'); if(!ok)allOk=false; };
+  trace.forEach(c=>{
+    const el=document.querySelector(`#sumMulti .ans[data-slot="d${c.i}"]`);
+    mark(el, parseInt(cellVals['d'+c.i])===c.digit);
+  });
+  if(allOk){
+    setSay(S().okMsg(state.a,state.op,state.b,answer()));
+    celebrate(); const bc=$('btnCheck'); if(bc) bc.disabled=true;
+    clearTimeout(autoNextTimer);
+    autoNextTimer=setTimeout(()=>{ if(state.mode==='try') newRound(); }, 3000);
+  } else {
+    setSay(S().hintGeneric);
+    const badEl=document.querySelector('#sumMulti .ans.bad');
+    if(badEl) multiSelectCell(badEl);
+  }
+}
+function buildMultiStepsAdd(){
+  const trace=addTrace(state.a,state.b);
+  const steps=[];
+  trace.forEach(c=>{
+    const pk=PLACE_KEYS[c.i]||('p'+c.i);
+    const pname=placeName(c.i);
+    let say = c.carryIn ? S().multiAddColCarry(pname,c.da,c.db,c.sum) : S().multiAddCol(pname,c.da,c.db,c.sum);
+    if(c.carryOut) say += ' ' + S().multiCarryNote(placeName(c.i+1));
+    steps.push({
+      say, col:pk, pulse:'out-d'+c.i,
+      fx:()=>{
+        const el=$('out-d'+c.i); if(el){ el.textContent=c.digit; el.style.animation='popin .4s cubic-bezier(.2,1.5,.4,1)'; }
+        if(c.carryOut){ const cm=$('cm-'+(c.i+1)); if(cm){ cm.textContent='1'; cm.classList.add('show'); } }
+      }
+    });
+  });
+  steps.push({say:S().answerMsg(answer()), col:null, fx:()=>done(answer())});
+  return steps;
 }
 
 /* ================= WATCH mode (guided steps) ================= */
@@ -1047,9 +1241,19 @@ function renderRound(){
   clearTimeout(autoNextTimer);
   cellVals={};
   const isWP = state.key==='wordprob';
-  $('stageNormal').style.display = isWP ? 'none' : '';
+  const isMulti = isMultiKey();
+  $('stageNormal').style.display = (isWP||isMulti) ? 'none' : '';
   $('wordboard').style.display = isWP ? 'block' : 'none';
+  $('stageMulti').style.display = isMulti ? 'block' : 'none';
   if(isWP){ renderWordRound(); return; }
+  if(isMulti){
+    if(state.mode==='try'){ renderMultiSum('try'); setSay(S().tryStartSay);
+      const bc=$('btnCheck'); if(bc) bc.disabled=false; }
+    else { renderMultiSum('watch'); state.watchSteps=buildMultiStepsAdd(); state.watchIdx=0;
+      multiClearFocus(); renderStepbar(0,state.watchSteps.length);
+      setSay(S().watchStartSay); updateWatchBtn(); }
+    return;
+  }
   if(state.mode==='try'){ renderSum('try'); $('concreteWrap').style.display='none';
     const hasBorrowBox = !!document.querySelector('#sum .ans[data-slot="borrowTens"]');
     setSay(hasBorrowBox ? S().tryStartSayBorrow : S().tryStartSay);
@@ -1067,7 +1271,7 @@ function renderControls(){
       <button class="btn sun" id="btnHelp">${s.helpBtn}</button>
       <button class="btn go" id="btnCheck">${s.checkBtn}</button>`;
     $('btnHelp').onclick=()=>setMode('watch');
-    $('btnCheck').onclick=checkAnswer;
+    $('btnCheck').onclick=isMultiKey()?multiCheckAnswer:checkAnswer;
   } else {
     $('controls').innerHTML=`
       <button class="btn primary" id="btnNext">${s.nextBtn}</button>
@@ -1101,7 +1305,8 @@ function nextStep(){
   if(state.watchIdx>=total){ newRound(); return; }
   const st=state.watchSteps[state.watchIdx];
   setSay(st.say);
-  if(st.col) focusCol(st.col); else clearFocus();
+  const isMulti=isMultiKey();
+  if(st.col) (isMulti?multiFocusCol(st.col):focusCol(st.col)); else (isMulti?multiClearFocus():clearFocus());
   if(st.fx) st.fx();
   if(st.pulse) pulseCell(st.pulse);
   state.watchIdx++;
