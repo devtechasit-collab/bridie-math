@@ -111,6 +111,7 @@
   .strike{position:absolute;left:8%;right:8%;top:52%;height:4px;background:var(--tens);border-radius:9px;
     transform:scaleX(0);transform-origin:left;transition:transform .35s ease}
   .strike.show{transform:scaleX(1)}
+  .digit.dim{opacity:.35;filter:saturate(.4);transition:opacity .35s ease,filter .35s ease}
   .colglow{border-radius:14px;transition:background .3s}
   .colglow.on-ones{background:var(--ones-soft)}
   .colglow.on-tens{background:var(--tens-soft)}
@@ -781,6 +782,7 @@ function padPress(v){
       el.classList.add('ok');
       showOnesBorrowMark();
       const strk=$('strk-tens'); if(strk) strk.classList.add('show');
+      const a=$('a-tens'); if(a) a.classList.add('dim');
       const onesEl=document.querySelector('#sum .ans[data-slot="ones"]');
       if(onesEl){ onesEl.classList.remove('locked'); selectCell(onesEl); }
     } else {
@@ -1048,6 +1050,7 @@ function multiPadPress(v){
       el.classList.add('ok');
       if(state.op==='−'){
         const strk=$('strk-'+filledSlot.slice(5)); if(strk) strk.classList.add('show');
+        const a=$('a-'+filledSlot.slice(5)); if(a) a.classList.add('dim');
         const belowIdx=parseInt(filledSlot.slice(5))-1;
         const bm=$('bm-'+belowIdx); if(bm) bm.classList.add('show');
         const join=$('join-'+belowIdx); if(join) join.classList.add('revealed');
@@ -1104,6 +1107,7 @@ function buildMultiStepsSub(){
   const narrated=new Array(trace.length).fill(false);
   const reveal=(i,val)=>()=>{
     const strk=$('strk-'+i); if(strk) strk.classList.add('show');
+    const a=$('a-'+i); if(a) a.classList.add('dim');
     const cm=$('cm-'+i); if(cm){ cm.textContent=val; cm.classList.add('show'); }
   };
   const writeDigit=(i,digit)=>()=>{
@@ -1295,6 +1299,7 @@ function flyTenDotToOnes(onDone){
 }
 function showBorrowMark(){
   const s=$('strk-tens'); if(s) s.classList.add('show');
+  const a=$('a-tens'); if(a) a.classList.add('dim');
   const cm=$('cm-tens-sub'); if(cm){ cm.textContent = tens(state.a)-1; cm.classList.add('show'); }
 }
 function showOnesBorrowMark(){
