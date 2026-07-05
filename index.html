@@ -380,9 +380,11 @@ const LESSONS = {
   wordprob: {op:'+', icon:'📖', cls:'word', tag:'hard'},
   add3: {op:'+', icon:'＋', cls:'add', tag:'hard'},
   add4: {op:'+', icon:'＋', cls:'add', tag:'hard'},
+  sub3: {op:'−', icon:'－', cls:'sub', tag:'hard'},
+  sub4: {op:'−', icon:'－', cls:'sub', tag:'hard'},
 };
 
-let state = { key:null, mode:'try', lang:'th', a:0, b:0, op:'+', tplIndex:0, sel:null, watchSteps:[], watchIdx:0, multiSeq:[] };
+let state = { key:null, mode:'try', lang:'th', a:0, b:0, op:'+', tplIndex:0, sel:null, watchSteps:[], watchIdx:0, multiSeq:[], multiExpected:{} };
 
 /* ================= language strings ================= */
 const T = {
@@ -403,6 +405,8 @@ th:{
     wordprob:{title:`โจทย์ปัญหา 📖`, desc:`อ่านเรื่อง ลากตัวเลขมาวาง แล้วเลือกเครื่องหมายเอง`},
     add3:{title:`บวก 3 หลัก`, desc:`456 + 178 อาจทดครั้งเดียวหรือหลายครั้ง`},
     add4:{title:`บวก 4 หลัก`, desc:`4567 + 1789 ท้าทายสุด!`},
+    sub3:{title:`ลบ 3 หลัก`, desc:`500 − 178 อาจยืมข้ามหลักที่เป็น 0`},
+    sub4:{title:`ลบ 4 หลัก`, desc:`5000 − 1234 ยืมข้ามหลายหลักได้`},
   },
   concreteAdd:(a,b)=>`นับเม็ดหลักหน่วยที่ต้องบวกกัน: ${a} + ${b}`,
   concreteSub:`เม็ดส้ม = หลักหน่วยของตัวตั้ง  •  แท่งฟ้า = หลักสิบ`,
@@ -450,6 +454,12 @@ th:{
   multiAddCol:(place,da,db,sum)=>`หลัก${place}: ${da} + ${db} = <b>${sum}</b>`,
   multiAddColCarry:(place,da,db,sum)=>`หลัก${place}: ทด 1 + ${da} + ${db} = <b>${sum}</b>`,
   multiCarryNote:(nextPlace)=>`เกิน 10 ทด 1 ไปหลัก${nextPlace}`,
+  multiSubNotEnough:(place,da,db)=>`หลัก${place}: <b>${da}</b> น้อยกว่า <b>${db}</b> ไม่พอ! ต้องยืมมาช่วย`,
+  multiSubZeroNoLend:(place)=>`หลัก${place}มี 0 ไม่มีจะให้ยืมเลย ต้องยืมจากหลักถัดไปก่อน`,
+  multiSubLend:(place,daOrig,da)=>`หลัก${place}ให้ยืมไป 1 (จาก <span class="h-tens">${daOrig}</span> เหลือ <span class="h-tens">${da}</span>)`,
+  multiSubCascade:(place,fromPlace,daOrig,da)=>`หลัก${place}เป็น ${daOrig} ไม่พอให้ยืม ต้องยืมจากหลัก${fromPlace}มาก่อน แล้วค่อยให้ยืมต่อ (เหลือ <span class="h-tens">${da}</span>)`,
+  multiSubReceived:(place,daOrig,da,db,digit)=>`หลัก${place}ยืมมา 10 ตอนนี้มี <b>${daOrig}+10 = ${da}</b>  ${da} − ${db} = <b>${digit}</b>`,
+  multiSubCol:(place,da,db,digit)=>`หลัก${place}: ${da} − ${db} = <b>${digit}</b>`,
   wordProblems:[
     {op:'+', tpl:(a,b)=>`แม่ซื้อส้มมา <b class="wp-num" data-value="${a}">${a}</b> ผล พ่อซื้อมา <b class="wp-num" data-value="${b}">${b}</b> ผล พ่อและแม่มีส้มรวมกันกี่ผล`},
     {op:'+', tpl:(a,b)=>`ในสวนมีนกอยู่ <b class="wp-num" data-value="${a}">${a}</b> ตัว บินมาเพิ่มอีก <b class="wp-num" data-value="${b}">${b}</b> ตัว ตอนนี้มีนกทั้งหมดกี่ตัว`},
@@ -478,6 +488,8 @@ en:{
     wordprob:{title:`Word problems 📖`, desc:`Read the story, drag the numbers, pick the sign yourself`},
     add3:{title:`Add 3-digit`, desc:`456 + 178 — maybe one carry, maybe more`},
     add4:{title:`Add 4-digit`, desc:`4567 + 1789 — the ultimate challenge!`},
+    sub3:{title:`Subtract 3-digit`, desc:`500 − 178 — may borrow across a zero`},
+    sub4:{title:`Subtract 4-digit`, desc:`5000 − 1234 — borrow across many places`},
   },
   concreteAdd:(a,b)=>`Count the ones to add: ${a} + ${b}`,
   concreteSub:`Orange = ones   •   Blue bar = tens`,
@@ -525,6 +537,12 @@ en:{
   multiAddCol:(place,da,db,sum)=>`${place}: ${da} + ${db} = <b>${sum}</b>`,
   multiAddColCarry:(place,da,db,sum)=>`${place}: carried 1 + ${da} + ${db} = <b>${sum}</b>`,
   multiCarryNote:(nextPlace)=>`That's 10 or more, so carry 1 to the ${nextPlace}.`,
+  multiSubNotEnough:(place,da,db)=>`${place}: <b>${da}</b> is less than <b>${db}</b> — not enough! We need to borrow.`,
+  multiSubZeroNoLend:(place)=>`The ${place} are 0 — nothing to lend at all. Need to borrow from further up first.`,
+  multiSubLend:(place,daOrig,da)=>`The ${place} lend 1 (from <span class="h-tens">${daOrig}</span> down to <span class="h-tens">${da}</span>)`,
+  multiSubCascade:(place,fromPlace,daOrig,da)=>`The ${place} are ${daOrig} — not enough to lend. They borrow from the ${fromPlace} first, then lend on (leaving <span class="h-tens">${da}</span>)`,
+  multiSubReceived:(place,daOrig,da,db,digit)=>`The ${place} borrowed 10, so now there's <b>${daOrig}+10 = ${da}</b>.  ${da} − ${db} = <b>${digit}</b>`,
+  multiSubCol:(place,da,db,digit)=>`${place}: ${da} − ${db} = <b>${digit}</b>`,
   wordProblems:[
     {op:'+', tpl:(a,b)=>`Mom bought <b class="wp-num" data-value="${a}">${a}</b> oranges. Dad bought <b class="wp-num" data-value="${b}">${b}</b> oranges. How many oranges do Mom and Dad have together?`},
     {op:'+', tpl:(a,b)=>`There were <b class="wp-num" data-value="${a}">${a}</b> birds in the garden. <b class="wp-num" data-value="${b}">${b}</b> more flew in. How many birds are there now?`},
@@ -563,12 +581,16 @@ function subTrace(a,b){
   const len=numDigits(a);
   const cols=[]; let borrow=0;
   for(let i=0;i<len;i++){
-    let da=digitAt(a,i)-borrow;
+    // daRaw can go negative (only ever -1) when this column's own digit can't cover what it owes
+    // the column below — that alone already means it must borrow from above, same as the original
+    // single-tier check. afterLend is the same value clamped into 0-9 purely for display.
+    const daRaw=digitAt(a,i)-borrow;
+    const afterLend=daRaw<0?daRaw+10:daRaw;
     const db=digitAt(b,i);
-    let borrowOut=0;
+    let da=daRaw, borrowOut=0;
     if(da<db){ da+=10; borrowOut=1; }
     const digit=da-db;
-    cols.push({i,daOrig:digitAt(a,i),da,db,borrowIn:borrow,borrowOut,digit});
+    cols.push({i,daOrig:digitAt(a,i),afterLend,da,db,borrowIn:borrow,borrowOut,digit});
     borrow=borrowOut;
   }
   return cols;
@@ -598,6 +620,8 @@ function makeProblem(key){
     if(key==='sub2b'){ a=rnd(22,95); b=rnd(13,a-8); if(ones(a)<ones(b) && tens(a)>tens(b)) return{a,b,op}; }
     if(key==='add3'){ a=rnd(100,999); b=rnd(100,999); return {a,b,op}; }
     if(key==='add4'){ a=rnd(1000,9999); b=rnd(1000,9999); return {a,b,op}; }
+    if(key==='sub3'){ a=rnd(100,999); b=rnd(100,a); return {a,b,op}; }
+    if(key==='sub4'){ a=rnd(1000,9999); b=rnd(1000,a); return {a,b,op}; }
   }
   return {a:27,b:15,op};
 }
@@ -893,26 +917,53 @@ function wpEnterCalcPhase(){
 /* ================= MULTI-DIGIT (3-4 digit addition, generalized N-column engine) ================= */
 const PLACE_KEYS=['ones','tens','hundreds','thousands'];
 function placeName(i){ return S().placeNames[PLACE_KEYS[i]] || PLACE_KEYS[i] || ('p'+i); }
-function isMultiKey(){ return state.key==='add3'||state.key==='add4'; }
+function isMultiKey(){ return state.key==='add3'||state.key==='add4'||state.key==='sub3'||state.key==='sub4'; }
 
+function buildAddSeq(trace){
+  const seq=[];
+  trace.forEach((c,idx)=>{
+    seq.push('d'+c.i);
+    if(idx+1<trace.length && trace[idx+1].carryIn) seq.push('carry'+trace[idx+1].i);
+  });
+  return seq;
+}
+function buildSubSeq(trace){
+  const reduceCols=trace.filter(c=>c.borrowIn).map(c=>c.i).sort((a,b)=>b-a);
+  const seq=reduceCols.map(i=>'carry'+i);
+  trace.forEach(c=>seq.push('d'+c.i));
+  return seq;
+}
 function renderMultiSum(mode){
   const A=state.a, B=state.b;
-  const trace=addTrace(A,B);
+  const isAdd=state.op==='+';
+  const trace=isAdd?addTrace(A,B):subTrace(A,B);
   const cols=[...trace].reverse();
   const gridCols=`40px repeat(${cols.length},62px)`;
+
+  state.multiExpected={};
+  trace.forEach(c=>{
+    state.multiExpected['d'+c.i]=c.digit;
+    const needsMark=isAdd?c.carryIn:c.borrowIn;
+    if(needsMark) state.multiExpected['carry'+c.i]=isAdd?1:c.afterLend;
+  });
 
   let carryCells='', aCells='', bCells='', ansCells='';
   cols.forEach(c=>{
     const pk=PLACE_KEYS[c.i]||('p'+c.i);
+    const needsMark=isAdd?c.carryIn:c.borrowIn;
     let carryInner='';
-    if(c.carryIn){
+    if(needsMark){
       carryInner = mode==='try'
         ? `<div class="ans carry" data-slot="carry${c.i}" id="in-carry${c.i}">?</div>`
         : `<span class="carrymark" id="cm-${c.i}"></span>`;
     }
     carryCells += `<div class="cell" data-col="${pk}" style="height:52px">${carryInner}</div>`;
     const aShow = c.i < numDigits(A);
-    aCells += `<div class="cell" data-col="${pk}">${aShow?`<span class="digit ${pk}">${digitAt(A,c.i)}</span>`:''}</div>`;
+    const aVal = isAdd ? digitAt(A,c.i) : c.daOrig;
+    const aInner = (!isAdd && needsMark)
+      ? `<span class="digit ${pk}" id="a-${c.i}">${aVal}</span><span class="strike" id="strk-${c.i}"></span>`
+      : `<span class="digit ${pk}">${aVal}</span>`;
+    aCells += `<div class="cell" data-col="${pk}">${aShow?aInner:''}</div>`;
     const bShow = c.i < numDigits(B);
     bCells += `<div class="cell" data-col="${pk}">${bShow?`<span class="digit ${pk}">${digitAt(B,c.i)}</span>`:''}</div>`;
     const ansInner = mode==='try'
@@ -923,21 +974,18 @@ function renderMultiSum(mode){
 
   const carryRow=`<div class="row" style="grid-template-columns:${gridCols}"><div class="cell"></div>${carryCells}</div>`;
   const rowA=`<div class="row" style="grid-template-columns:${gridCols}"><div class="cell"></div>${aCells}</div>`;
-  const rowB=`<div class="row" style="grid-template-columns:${gridCols}"><div class="cell op">+</div>${bCells}</div>`;
+  const rowB=`<div class="row" style="grid-template-columns:${gridCols}"><div class="cell op">${state.op}</div>${bCells}</div>`;
   const rowAns=`<div class="row" style="grid-template-columns:${gridCols}"><div class="cell"></div>${ansCells}</div>`;
   $('sumMulti').innerHTML = carryRow+rowA+rowB+`<div class="rule"></div>`+rowAns;
 
   if(mode==='try'){
-    state.multiSeq=[];
-    trace.forEach((c,idx)=>{
-      state.multiSeq.push('d'+c.i);
-      if(idx+1<trace.length && trace[idx+1].carryIn) state.multiSeq.push('carry'+trace[idx+1].i);
-    });
+    state.multiSeq = isAdd ? buildAddSeq(trace) : buildSubSeq(trace);
+    const firstSlot = state.multiSeq[0];
     document.querySelectorAll('#sumMulti .ans').forEach(el=>{
       el.onclick=()=>multiSelectCell(el);
-      if(el.dataset.slot!=='d0') el.classList.add('locked');
+      if(el.dataset.slot!==firstSlot) el.classList.add('locked');
     });
-    const first=document.querySelector('#sumMulti .ans[data-slot="d0"]');
+    const first=document.querySelector(`#sumMulti .ans[data-slot="${firstSlot}"]`);
     if(first) multiSelectCell(first);
   }
 }
@@ -973,8 +1021,9 @@ function multiPadPress(v){
   const idx=seq.indexOf(filledSlot);
   const next=idx>=0 ? seq[idx+1] : null;
   if(filledSlot.startsWith('carry')){
-    if(v==='1'){
+    if(parseInt(v)===state.multiExpected[filledSlot]){
       el.classList.add('ok');
+      if(state.op==='−'){ const strk=$('strk-'+filledSlot.slice(5)); if(strk) strk.classList.add('show'); }
       if(next){ const nextEl=document.querySelector(`#sumMulti .ans[data-slot="${next}"]`); if(nextEl){ nextEl.classList.remove('locked'); multiSelectCell(nextEl); } }
     } else {
       el.classList.add('bad');
@@ -986,12 +1035,10 @@ function multiPadPress(v){
   if(multiReadyToCheck()) setTimeout(multiCheckAnswer,300);
 }
 function multiCheckAnswer(){
-  const trace=addTrace(state.a,state.b);
   let allOk=true;
   const mark=(el,ok)=>{ if(!el)return; el.classList.remove('ok','bad','sel'); el.classList.add(ok?'ok':'bad'); if(!ok)allOk=false; };
-  trace.forEach(c=>{
-    const el=document.querySelector(`#sumMulti .ans[data-slot="d${c.i}"]`);
-    mark(el, parseInt(cellVals['d'+c.i])===c.digit);
+  document.querySelectorAll('#sumMulti .ans[data-slot^="d"]').forEach(el=>{
+    mark(el, parseInt(cellVals[el.dataset.slot])===state.multiExpected[el.dataset.slot]);
   });
   if(allOk){
     setSay(S().okMsg(state.a,state.op,state.b,answer()));
@@ -1020,6 +1067,54 @@ function buildMultiStepsAdd(){
       }
     });
   });
+  steps.push({say:S().answerMsg(answer()), col:null, fx:()=>done(answer())});
+  return steps;
+}
+function buildMultiStepsSub(){
+  const trace=subTrace(state.a,state.b);
+  const steps=[];
+  const narrated=new Array(trace.length).fill(false);
+  const reveal=(i,val)=>()=>{
+    const strk=$('strk-'+i); if(strk) strk.classList.add('show');
+    const cm=$('cm-'+i); if(cm){ cm.textContent=val; cm.classList.add('show'); }
+  };
+  const writeDigit=(i,digit)=>()=>{
+    const el=$('out-d'+i); if(el){ el.textContent=digit; el.style.animation='popin .4s cubic-bezier(.2,1.5,.4,1)'; }
+  };
+  for(let i=0;i<trace.length;i++){
+    const c=trace[i];
+    const pk=PLACE_KEYS[c.i]||('p'+c.i);
+    const pname=placeName(c.i);
+    // Step A: if this column owes 1 to the column below, pay it off first — either directly
+    // (it has enough of its own digit) or by reaching further up through a chain of zeros.
+    if(c.borrowIn && !narrated[i]){
+      if(c.daOrig===0){
+        let k=i+1;
+        while(k<trace.length && trace[k].daOrig===0) k++;
+        steps.push({say:S().multiSubZeroNoLend(pname), col:pk, fx:()=>{}});
+        for(let j=k;j>=i+1;j--){
+          const cj=trace[j];
+          const pkj=PLACE_KEYS[cj.i]||('p'+cj.i);
+          const pnamej=placeName(cj.i);
+          const say = (j<k) ? S().multiSubCascade(pnamej,placeName(cj.i+1),cj.daOrig,cj.afterLend) : S().multiSubLend(pnamej,cj.daOrig,cj.afterLend);
+          steps.push({say, col:pkj, fx:reveal(cj.i,cj.afterLend)});
+          narrated[j]=true;
+        }
+      } else {
+        steps.push({say:S().multiSubLend(pname,c.daOrig,c.afterLend), col:pk, fx:reveal(c.i,c.afterLend)});
+      }
+      narrated[i]=true;
+    }
+    // Step B: with the debt (if any) paid off, does this column separately need its own
+    // borrow from above to cover db? (mutually exclusive with the zero-chain case above,
+    // since a resolved zero-chain column always ends up with afterLend=9.)
+    if(c.afterLend < c.db){
+      steps.push({say:S().multiSubNotEnough(pname,c.afterLend,c.db), col:pk, fx:()=>{}});
+      steps.push({say:S().multiSubReceived(pname,c.afterLend,c.da,c.db,c.digit), col:pk, pulse:'out-d'+c.i, fx:writeDigit(c.i,c.digit)});
+    } else {
+      steps.push({say:S().multiSubCol(pname,c.afterLend,c.db,c.digit), col:pk, pulse:'out-d'+c.i, fx:writeDigit(c.i,c.digit)});
+    }
+  }
   steps.push({say:S().answerMsg(answer()), col:null, fx:()=>done(answer())});
   return steps;
 }
@@ -1249,7 +1344,7 @@ function renderRound(){
   if(isMulti){
     if(state.mode==='try'){ renderMultiSum('try'); setSay(S().tryStartSay);
       const bc=$('btnCheck'); if(bc) bc.disabled=false; }
-    else { renderMultiSum('watch'); state.watchSteps=buildMultiStepsAdd(); state.watchIdx=0;
+    else { renderMultiSum('watch'); state.watchSteps=(state.op==='+'?buildMultiStepsAdd():buildMultiStepsSub()); state.watchIdx=0;
       multiClearFocus(); renderStepbar(0,state.watchSteps.length);
       setSay(S().watchStartSay); updateWatchBtn(); }
     return;
