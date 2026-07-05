@@ -457,6 +457,7 @@ th:{
   multiCarryNote:(nextPlace)=>`เกิน 10 ทด 1 ไปหลัก${nextPlace}`,
   multiSubNotEnough:(place,da,db)=>`หลัก${place}: <b>${da}</b> น้อยกว่า <b>${db}</b> ไม่พอ! ต้องยืมมาช่วย`,
   multiSubZeroNoLend:(place)=>`หลัก${place}มี 0 ไม่มีจะให้ยืมเลย ต้องยืมจากหลักถัดไปก่อน`,
+  multiSubGotTen:(place,fromPlace)=>`หลัก${place}ยืมมาจากหลัก${fromPlace} ตอนนี้มี 10`,
   multiSubLend:(place,daOrig,da)=>`หลัก${place}ให้ยืมไป 1 (จาก <span class="h-tens">${daOrig}</span> เหลือ <span class="h-tens">${da}</span>)`,
   multiSubCascade:(place,fromPlace,daOrig,da)=>`หลัก${place}เป็น ${daOrig} ไม่พอให้ยืม ต้องยืมจากหลัก${fromPlace}มาก่อน แล้วค่อยให้ยืมต่อ (เหลือ <span class="h-tens">${da}</span>)`,
   multiSubReceived:(place,daOrig,da,db,digit)=>`หลัก${place}ยืมมา 10 ตอนนี้มี <b>${daOrig}+10 = ${da}</b>  ${da} − ${db} = <b>${digit}</b>`,
@@ -540,6 +541,7 @@ en:{
   multiCarryNote:(nextPlace)=>`That's 10 or more, so carry 1 to the ${nextPlace}.`,
   multiSubNotEnough:(place,da,db)=>`${place}: <b>${da}</b> is less than <b>${db}</b> — not enough! We need to borrow.`,
   multiSubZeroNoLend:(place)=>`The ${place} are 0 — nothing to lend at all. Need to borrow from further up first.`,
+  multiSubGotTen:(place,fromPlace)=>`The ${place} borrowed from the ${fromPlace} — now there's 10.`,
   multiSubLend:(place,daOrig,da)=>`The ${place} lend 1 (from <span class="h-tens">${daOrig}</span> down to <span class="h-tens">${da}</span>)`,
   multiSubCascade:(place,fromPlace,daOrig,da)=>`The ${place} are ${daOrig} — not enough to lend. They borrow from the ${fromPlace} first, then lend on (leaving <span class="h-tens">${da}</span>)`,
   multiSubReceived:(place,daOrig,da,db,digit)=>`The ${place} borrowed 10, so now there's <b>${daOrig}+10 = ${da}</b>.  ${da} − ${db} = <b>${digit}</b>`,
@@ -981,7 +983,11 @@ function renderMultiSum(mode){
     const aShow = c.i < numDigits(A);
     const aVal = isAdd ? digitAt(A,c.i) : c.daOrig;
     let aInner;
-    if(!isAdd && needsMark){
+    if(!isAdd && needsMark && c.daOrig===0){
+      // this column is itself zero — it has nothing to lend until it first borrows a ten
+      // from further up, so it gets the same "1"+digit badge ones does, before being struck.
+      aInner = `<span class="borrowjoin" id="join-${c.i}">${badge}<span class="digit ${pk}" id="a-${c.i}">${aVal}</span></span><span class="strike" id="strk-${c.i}"></span>`;
+    } else if(!isAdd && needsMark){
       aInner = `<span class="digit ${pk}" id="a-${c.i}">${aVal}</span><span class="strike" id="strk-${c.i}"></span>`;
     } else if(needsOwnBorrow){
       aInner = `<span class="borrowjoin" id="join-${c.i}">${badge}<span class="digit ${pk}" id="a-${c.i}">${aVal}</span></span>`;
@@ -1114,6 +1120,7 @@ function buildMultiStepsSub(){
   const reveal=(i,val)=>()=>{
     const strk=$('strk-'+i); if(strk) strk.classList.add('show');
     const a=$('a-'+i); if(a) a.classList.add('dim');
+    const bm=$('bm-'+i); if(bm) bm.classList.add('dim');
     const cm=$('cm-'+i); if(cm){ cm.textContent=val; cm.classList.add('show'); }
   };
   const writeDigit=(i,digit)=>()=>{
@@ -1123,6 +1130,10 @@ function buildMultiStepsSub(){
     const bm=$('bm-'+i); if(bm) bm.classList.add('show');
     const join=$('join-'+i); if(join) join.classList.add('revealed');
     writeDigit(i,digit)();
+  };
+  const showTenBadge=(i)=>()=>{
+    const bm=$('bm-'+i); if(bm) bm.classList.add('show');
+    const join=$('join-'+i); if(join) join.classList.add('revealed');
   };
   // Resolves "column `start` (and further up, through any chain of zeros) lends 1 down" —
   // narrated in full, top-down, BEFORE the column below is allowed to receive and compute.
@@ -1139,8 +1150,14 @@ function buildMultiStepsSub(){
         const cj=trace[j];
         const pkj=PLACE_KEYS[cj.i]||('p'+cj.i);
         const pnamej=placeName(cj.i);
-        const say = (j<k) ? S().multiSubCascade(pnamej,placeName(cj.i+1),cj.daOrig,cj.afterLend) : S().multiSubLend(pnamej,cj.daOrig,cj.afterLend);
-        steps.push({say, col:pkj, mcells:{i:cj.i,rows:['a','carry']}, fx:reveal(cj.i,cj.afterLend)});
+        if(j<k){
+          // this column is also zero — it must receive its own ten from further up
+          // (shown explicitly, same badge ones gets) before it can lend 1 onward.
+          steps.push({say:S().multiSubGotTen(pnamej,placeName(cj.i+1)), col:pkj, mcells:{i:cj.i,rows:['a']}, fx:showTenBadge(cj.i)});
+          steps.push({say:S().multiSubCascade(pnamej,placeName(cj.i+1),cj.daOrig,cj.afterLend), col:pkj, mcells:{i:cj.i,rows:['a','carry']}, fx:reveal(cj.i,cj.afterLend)});
+        } else {
+          steps.push({say:S().multiSubLend(pnamej,cj.daOrig,cj.afterLend), col:pkj, mcells:{i:cj.i,rows:['a','carry']}, fx:reveal(cj.i,cj.afterLend)});
+        }
         narrated[j]=true;
       }
     } else {
