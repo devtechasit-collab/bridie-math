@@ -1148,6 +1148,10 @@ function buildMultiStepsSub(){
       narrated[start]=true;
     }
   };
+  // Once a column has already lent below, its row-A digit is struck out and superseded by
+  // the value revealed in the carry cell — later steps must reference THAT cell, not the
+  // now-stale original digit, since the narration always does its math on the reduced value.
+  const curRow=(i)=>trace[i].borrowIn?'carry':'a';
   for(let i=0;i<trace.length;i++){
     const c=trace[i];
     const pk=PLACE_KEYS[c.i]||('p'+c.i);
@@ -1156,11 +1160,11 @@ function buildMultiStepsSub(){
     // (and narrate) that entire lending chain first — otherwise the receive-and-compute step
     // below would use a "10" that was never shown arriving.
     if(c.afterLend < c.db){
-      steps.push({say:S().multiSubNotEnough(pname,c.afterLend,c.db), col:pk, mcells:{i:c.i,rows:['a','b']}, fx:()=>{}});
+      steps.push({say:S().multiSubNotEnough(pname,c.afterLend,c.db), col:pk, mcells:{i:c.i,rows:[curRow(i),'b']}, fx:()=>{}});
       if(i+1<trace.length) resolveChain(i+1);
-      steps.push({say:S().multiSubReceived(pname,c.afterLend,c.da,c.db,c.digit), col:pk, mcells:{i:c.i,rows:['a','ans']}, pulse:'out-d'+c.i, fx:receiveBorrow(c.i,c.digit)});
+      steps.push({say:S().multiSubReceived(pname,c.afterLend,c.da,c.db,c.digit), col:pk, mcells:{i:c.i,rows:[curRow(i),'b','ans']}, pulse:'out-d'+c.i, fx:receiveBorrow(c.i,c.digit)});
     } else {
-      steps.push({say:S().multiSubCol(pname,c.afterLend,c.db,c.digit), col:pk, mcells:{i:c.i,rows:['a','b','ans']}, pulse:'out-d'+c.i, fx:writeDigit(c.i,c.digit)});
+      steps.push({say:S().multiSubCol(pname,c.afterLend,c.db,c.digit), col:pk, mcells:{i:c.i,rows:[curRow(i),'b','ans']}, pulse:'out-d'+c.i, fx:writeDigit(c.i,c.digit)});
     }
   }
   steps.push({say:S().answerMsg(answer()), col:null, fx:()=>done(answer())});
